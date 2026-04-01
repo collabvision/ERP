@@ -216,7 +216,7 @@ export default function Home() {
 
       {/* HEADER NAVIGATION */}
       <nav className="bg-white border-b h-20 flex items-center px-8 justify-between sticky top-0 z-50 shadow-sm">
-        <h1 className="text-2xl font-black text-blue-600 tracking-tighter italic">ERP_Lite <span className="not-italic text-[10px] text-slate-300 ml-2">PRO ERP</span></h1>
+        {/* <h1 className="text-2xl font-black text-blue-600 tracking-tighter italic">ERP_Lite <span className="not-italic text-[10px] text-slate-300 ml-2">PRO ERP</span></h1> */}
         <div className="flex bg-slate-100 p-1.5 rounded-[1.5rem]">
           {['billing', 'inventory', 'history'].map((v) => (
             <button key={v} onClick={() => {setView(v); setIsDone(false);}} className={`px-8 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${view === v ? 'bg-white shadow-md text-blue-600' : 'text-slate-400'}`}>{v}</button>
