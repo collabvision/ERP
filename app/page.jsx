@@ -350,8 +350,9 @@ export default function Home() {
              </div>
 
              {/* 3. Inventory Table (READ / UPDATE / DELETE) */}
-             <div className="bg-white rounded-[3.5rem] border shadow-sm overflow-hidden">
-               <table className="w-full text-left">
+<div className="bg-white rounded-[3rem] shadow-sm border overflow-hidden">
+  <div className="w-full overflow-x-auto">
+                <table className="min-w-[700px] w-full text-left">
                  <thead className="bg-slate-50 border-b">
                    <tr className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
                      <th className="p-8">Product Details</th>
@@ -385,7 +386,8 @@ export default function Home() {
                      </tr>
                    ))}
                  </tbody>
-               </table>
+    </table>
+  </div>
              </div>
           </div>
         )}
