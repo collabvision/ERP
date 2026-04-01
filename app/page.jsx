@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -11,6 +11,36 @@ export default function Home() {
     { id: 2, name: 'Mechanical Keyboard RGB', quantity: 30, price: 3813.56, hsn: '8471', taxRate: 18 },
     { id: 3, name: 'Dell 24" IPS Monitor', quantity: 15, price: 10169.49, hsn: '8528', taxRate: 18 },
   ]);
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [showInstallBtn, setShowInstallBtn] = useState(false);
+
+  // --- PWA INSTALLATION LOGIC ---
+  useEffect(() => {
+    // Register Service Worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js');
+    }
+
+    // Capture the install event
+    const handler = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallBtn(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setShowInstallBtn(false);
+    }
+    setDeferredPrompt(null);
+  };
 
   const [cart, setCart] = useState([]);
   const [history, setHistory] = useState([]);
@@ -92,7 +122,7 @@ export default function Home() {
 
   const finalizeBill = () => {
     const newBill = {
-      billId: `V9-INV-${Date.now().toString().slice(-6)}`,
+      billId: `ERP-INV-${Date.now().toString().slice(-6)}`,
       date: new Date().toLocaleString('en-IN'),
       customer: { ...customer },
       items: [...cart],
@@ -176,6 +206,17 @@ export default function Home() {
             <button key={v} onClick={() => {setView(v); setIsDone(false);}} className={`flex-1 sm:flex-none px-4 lg:px-8 py-2 rounded-lg text-[10px] font-black uppercase transition-all whitespace-nowrap ${view === v ? 'bg-white shadow-sm text-blue-600' : 'text-slate-400'}`}>{v}</button>
           ))}
         </div>
+        {showInstallBtn && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[150] animate-in slide-in-from-bottom-10">
+          <button 
+            onClick={handleInstallClick}
+            className="bg-slate-900 text-white px-6 py-3 rounded-full font-black text-[10px] uppercase tracking-widest shadow-2xl flex items-center gap-3 border border-white/20 hover:bg-blue-600 transition-colors"
+          >
+            <span className="bg-blue-500 p-1 rounded-md text-[8px]">⬇️</span>
+            Install ERP App
+          </button>
+        </div>
+      )}
       </nav>
 
       <div className="max-w-7xl mx-auto mt-6 lg:mt-10 px-4 lg:px-6">
@@ -343,7 +384,11 @@ export default function Home() {
             {history.length === 0 && <div className="p-20 text-center text-slate-300 italic border-2 border-dashed rounded-2xl">No sales found.</div>}
           </div>
         )}
+
+
       </div>
+
+      
     </div>
   );
 }
