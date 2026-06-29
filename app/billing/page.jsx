@@ -9,6 +9,7 @@ import {
   getProducts,
   saveProducts,
 } from "@/lib/storage";
+import Navbar from "../../components/Navbar";
 
 export default function BillingPage() {
   const inputRef = useRef(null);
@@ -34,9 +35,7 @@ export default function BillingPage() {
     }
 
     setCart((prev) => {
-      const index = prev.findIndex(
-        (item) => item.barcode === value
-      );
+      const index = prev.findIndex((item) => item.barcode === value);
 
       if (index !== -1) {
         const updated = [...prev];
@@ -68,7 +67,7 @@ export default function BillingPage() {
 
     const total = cart.reduce(
       (sum, item) => sum + item.qty * item.sellingPrice,
-      0
+      0,
     );
 
     addBill({
@@ -82,8 +81,7 @@ export default function BillingPage() {
 
     const updated = products.map((product) => {
       const item = cart.find(
-        (cartItem) =>
-          cartItem.barcode === product.barcode
+        (cartItem) => cartItem.barcode === product.barcode,
       );
 
       if (!item) return product;
@@ -102,77 +100,98 @@ export default function BillingPage() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-100 p-6">
+    <>
+      {" "}
+      <Navbar />
+      <main className="min-h-screen bg-slate-100">
+        <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+          {/* Header */}
 
-      <div className="max-w-7xl mx-auto">
+          <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-slate-900 sm:text-4xl">
+                Billing
+              </h1>
 
-        <h1 className="text-3xl font-bold mb-6">
-          Billing
-        </h1>
-
-        <div className="grid lg:grid-cols-3 gap-6">
-
-          {/* Scanner */}
-
-          <div className="space-y-5">
-
-            <Scanner
-              continuous
-              onDetected={addProduct}
-            />
-
-            <div className="bg-white rounded-2xl border shadow p-5">
-
-              <h2 className="font-semibold mb-3">
-                Manual Barcode
-              </h2>
-
-              <div className="flex gap-2">
-
-                <input
-                  ref={inputRef}
-                  value={barcode}
-                  onChange={(e) =>
-                    setBarcode(e.target.value)
-                  }
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      addProduct();
-                    }
-                  }}
-                  placeholder="Enter Barcode"
-                  className="flex-1 border rounded-xl p-3"
-                />
-
-                <button
-                  onClick={() => addProduct()}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 rounded-xl"
-                >
-                  Add
-                </button>
-
-              </div>
-
+              <p className="mt-1 text-sm text-slate-500">
+                Scan products and generate customer bills.
+              </p>
             </div>
 
+            <div className="rounded-xl border bg-white px-4 py-3 shadow-sm">
+              <p className="text-xs uppercase tracking-wide text-slate-500">
+                POS
+              </p>
+
+              <p className="font-semibold">Billing Counter</p>
+            </div>
           </div>
 
-          {/* Cart */}
+          {/* Layout */}
 
-          <div className="lg:col-span-2">
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
+            {/* Left */}
 
-            <Cart
-              cart={cart}
-              setCart={setCart}
-              generateBill={generateBill}
-            />
+            <div className="space-y-6 xl:col-span-4">
+              <div className="sticky top-6 space-y-6">
+                {/* Scanner */}
 
+                <div className="rounded-2xl border bg-white shadow-lg">
+                  <div className="border-b p-5">
+                    <h2 className="text-xl font-bold">Live Scanner</h2>
+
+                    <p className="mt-1 text-sm text-slate-500">
+                      Scan barcode using your camera
+                    </p>
+                  </div>
+
+                  <div className="p-4">
+                    <Scanner continuous onDetected={addProduct} />
+                  </div>
+                </div>
+
+                {/* Manual Barcode */}
+
+                <div className="rounded-2xl border bg-white shadow-lg">
+                  <div className="border-b p-5">
+                    <h2 className="text-lg font-semibold">Manual Barcode</h2>
+                  </div>
+
+                  <div className="p-5">
+                    <div className="flex flex-col gap-3 sm:flex-row">
+                      <input
+                        ref={inputRef}
+                        value={barcode}
+                        onChange={(e) => setBarcode(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            addProduct();
+                          }
+                        }}
+                        placeholder="Enter Barcode"
+                        className="flex-1 rounded-xl border px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                      />
+
+                      <button
+                        onClick={addProduct}
+                        className="rounded-xl bg-blue-600 px-8 py-3 font-medium text-white transition hover:bg-blue-700"
+                      >
+                        Add
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right */}
+
+            <div className="xl:col-span-8">
+              <Cart cart={cart} setCart={setCart} generateBill={generateBill} />
+            </div>
           </div>
-
         </div>
-
-      </div>
-
-    </main>
+      </main>
+    </>
   );
 }

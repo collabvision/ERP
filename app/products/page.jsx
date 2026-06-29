@@ -3,12 +3,15 @@
 import { useState } from "react";
 import ProductForm from "@/components/ProductForm";
 import ProductTable from "@/components/ProductTable";
+import Navbar from "../../components/Navbar";
 
 export default function ProductsPage() {
   const [refresh, setRefresh] = useState(0);
 
   return (
-    <main className="min-h-screen bg-slate-100">
+      <>
+          <Navbar/>
+        <main className="min-h-screen bg-slate-100">
       <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -45,5 +48,6 @@ export default function ProductsPage() {
         </div>
       </div>
     </main>
+      </>
   );
 }
