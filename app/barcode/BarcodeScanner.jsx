@@ -1,145 +1,148 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { BrowserMultiFormatReader } from "@zxing/browser";
+import { useState } from "react";
+import { useZxing } from "react-zxing";
 
 export default function BarcodeScanner() {
-  const videoRef = useRef(null);
-  const canvasRef = useRef(null);
+  const [barcodeList, setBarcodeList] = useState([]);
+  const [borderColor, setBorderColor] = useState("#FFD700");
 
-  const [barcodes, setBarcodes] = useState([]);
+  const onResult = (result) => {
+    if (!result) return;
 
-  const reader = useRef(new BrowserMultiFormatReader());
+    const code = result.getText();
 
-  useEffect(() => {
-    let stream;
+    // Prevent duplicate scan
+    if (barcodeList.some((item) => item.barcode === code)) return;
 
-    async function startCamera() {
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: "environment",
-        },
-      });
+    setBorderColor("#22c55e");
 
-      videoRef.current.srcObject = stream;
-      await videoRef.current.play();
-    }
+    setTimeout(() => {
+      setBorderColor("#FFD700");
+    }, 1000);
 
-    startCamera();
+    setBarcodeList((prev) => [
+      ...prev,
+      {
+        id: Date.now(),
+        barcode: code,
+      },
+    ]);
 
-    return () => {
-      stream?.getTracks().forEach((track) => track.stop());
-    };
-  }, []);
-
-  const captureAndScan = async () => {
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-
-    const ctx = canvas.getContext("2d");
-
-    ctx.drawImage(video, 0, 0);
-
-    try {
-      const result = await reader.current.decodeFromCanvas(canvas);
-
-      const code = result.getText();
-
-      setBarcodes((prev) => {
-        if (prev.find((b) => b.barcode === code)) return prev;
-
-        return [
-          ...prev,
-          {
-            id: Date.now(),
-            barcode: code,
-          },
-        ];
-      });
-    } catch (err) {
-      alert("Barcode not found");
+    if (navigator.vibrate) {
+      navigator.vibrate(150);
     }
   };
+
+  const { ref } = useZxing({
+    onDecodeResult: onResult,
+    paused: false,
+  });
 
   return (
     <div
       style={{
         maxWidth: 700,
         margin: "30px auto",
+        textAlign: "center",
       }}
     >
       <h2>Barcode Scanner</h2>
 
       <video
-        ref={videoRef}
-        autoPlay
-        playsInline
+        ref={ref}
         style={{
           width: "100%",
-          border: "4px solid orange",
-          borderRadius: 12,
+          border: `6px solid ${borderColor}`,
+          borderRadius: 15,
+          transition: "0.3s",
         }}
       />
 
-      <canvas
-        ref={canvasRef}
-        style={{
-          display: "none",
-        }}
-      />
-
-      <button
-        onClick={captureAndScan}
-        style={{
-          width: "100%",
-          marginTop: 20,
-          padding: 15,
-          fontSize: 18,
-          cursor: "pointer",
-        }}
-      >
-        📸 Capture & Scan
-      </button>
-
-      <h3 style={{ marginTop: 30 }}>
-        Scanned Barcodes
-      </h3>
+      <h3 style={{ marginTop: 20 }}>Scanned Barcodes</h3>
 
       <table
-        border="1"
-        cellPadding="10"
         style={{
           width: "100%",
           borderCollapse: "collapse",
+          marginTop: 15,
         }}
       >
         <thead>
           <tr>
-            <th>#</th>
-            <th>Barcode</th>
+            <th
+              style={{
+                border: "1px solid #ddd",
+                padding: 10,
+              }}
+            >
+              #
+            </th>
+
+            <th
+              style={{
+                border: "1px solid #ddd",
+                padding: 10,
+              }}
+            >
+              Barcode
+            </th>
           </tr>
         </thead>
 
         <tbody>
-          {barcodes.map((item, index) => (
+          {barcodeList.map((item, index) => (
             <tr key={item.id}>
-              <td>{index + 1}</td>
-              <td>{item.barcode}</td>
+              <td
+                style={{
+                  border: "1px solid #ddd",
+                  padding: 10,
+                }}
+              >
+                {index + 1}
+              </td>
+
+              <td
+                style={{
+                  border: "1px solid #ddd",
+                  padding: 10,
+                  fontFamily: "monospace",
+                }}
+              >
+                {item.barcode}
+              </td>
             </tr>
           ))}
 
-          {barcodes.length === 0 && (
+          {barcodeList.length === 0 && (
             <tr>
-              <td colSpan="2" align="center">
+              <td
+                colSpan={2}
+                style={{
+                  padding: 20,
+                }}
+              >
                 No Barcode Scanned
               </td>
             </tr>
           )}
         </tbody>
       </table>
+
+      <button
+        onClick={() => setBarcodeList([])}
+        style={{
+          marginTop: 20,
+          padding: "12px 25px",
+          background: "#ef4444",
+          color: "#fff",
+          border: "none",
+          borderRadius: 10,
+          cursor: "pointer",
+        }}
+      >
+        Clear List
+      </button>
     </div>
   );
 }
