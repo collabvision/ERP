@@ -212,8 +212,8 @@ export default function Home() {
           <div className="grid lg:grid-cols-12 gap-6 lg:gap-10">
             <div className="lg:col-span-8 space-y-6">
               <div className="bg-white p-4 lg:p-6 rounded-2xl lg:rounded-[2rem] border grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <input className="w-full bg-slate-50 p-4 rounded-xl outline-none border focus:border-blue-400 text-sm font-bold" value={customer.name} onChange={e => setCustomer({...customer, name: e.target.value})} placeholder="Customer Name" />
-                <input className="w-full bg-slate-50 p-4 rounded-xl outline-none border focus:border-blue-400 text-sm font-bold" value={customer.phone} onChange={e => setCustomer({...customer, phone: e.target.value})} placeholder="Mobile Number" />
+                <input className="w-full bg-slate-50 p-4 rounded-xl outline-none border focus:border-blue-400 text-sm font-bold" value={customer.name} onChange={e => setCustomer({ ...customer, name: e.target.value })} placeholder="Customer Name" />
+                <input className="w-full bg-slate-50 p-4 rounded-xl outline-none border focus:border-blue-400 text-sm font-bold" value={customer.phone} onChange={e => setCustomer({ ...customer, phone: e.target.value })} placeholder="Mobile Number" />
               </div>
 
               {!isDone && (
@@ -221,38 +221,54 @@ export default function Home() {
                   <input type="text" placeholder="Search products..." className="w-full p-4 lg:p-6 rounded-2xl border-2 outline-none focus:border-blue-600 shadow-sm text-lg" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                   {searchTerm.length >= 2 && (
                     <div className="absolute top-full left-0 right-0 bg-white border rounded-2xl shadow-2xl mt-2 z-50 overflow-hidden">
-                      {inventory.filter(i => i.name.toLowerCase().includes(searchTerm.toLowerCase())).map(item => (
-                        <button key={item.id} onClick={() => addToCart(item)} className="w-full p-4 text-left hover:bg-blue-50 flex justify-between border-b items-center">
-                          <span className="font-bold text-sm">{item.name}</span>
-                          <span className="text-blue-600 font-black">₹{item.price.toFixed(0)}</span>
-                        </button>
-                        <button
-                          className="win-btn"
-                          style={{ width: '100%', height: '28px' }}
-                          onClick={() => { setCart([]); setCustomer({ name: '', phone: '' }); setIsDone(false); setDiscount(0); }}
-                        >
-                          New Session
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* System info panel */}
-                <div className="win-groupbox" style={{ marginTop: '8px' }}>
-                  <span className="win-groupbox-label">System Info</span>
-                  <div style={{ paddingTop: '6px', fontSize: '10px', color: '#444', lineHeight: '1.6' }}>
-                    <div>Version: ERP_Lite 2.0</div>
-                    <div>User: Administrator</div>
-                    <div>Terminal: POS-01</div>
-                    <div style={{ color: cart.length > 0 ? '#008000' : '#808080' }}>
-                      Cart: {cart.length} item(s)
+                      {inventory
+                        .filter((i) =>
+                          i.name.toLowerCase().includes(searchTerm.toLowerCase())
+                        )
+                        .map((item) => (
+                          <button
+                            key={item.id}
+                            onClick={() => addToCart(item)}
+                            className="w-full p-4 text-left hover:bg-blue-50 flex justify-between border-b items-center"
+                          >
+                            <span className="font-bold text-sm">{item.name}</span>
+                            <span className="text-blue-600 font-black">
+                              ₹{item.price.toFixed(0)}
+                            </span>
+                          </button>
+                        ))}
                     </div>
-                  </div>
+                  )}
+
+                  <button
+                    className="win-btn"
+                    style={{ width: "100%", height: "28px" }}
+                    onClick={() => {
+                      setCart([]);
+                      setCustomer({ name: "", phone: "" });
+                      setIsDone(false);
+                      setDiscount(0);
+                    }}
+                  >
+                    New Session
+                  </button>
+                </div>)}
+            </div>
+
+            {/* System info panel */}
+            <div className="win-groupbox" style={{ marginTop: '8px' }}>
+              <span className="win-groupbox-label">System Info</span>
+              <div style={{ paddingTop: '6px', fontSize: '10px', color: '#444', lineHeight: '1.6' }}>
+                <div>Version: ERP_Lite 2.0</div>
+                <div>User: Administrator</div>
+                <div>Terminal: POS-01</div>
+                <div style={{ color: cart.length > 0 ? '#008000' : '#808080' }}>
+                  Cart: {cart.length} item(s)
                 </div>
               </div>
             </div>
-          )}
+          </div>)}
+            </div>
 
           {/* --- INVENTORY VIEW --- */}
           {view === 'inventory' && (
@@ -319,155 +335,220 @@ export default function Home() {
           )}
 
           {/* --- HISTORY VIEW --- */}
-          {view === 'history' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '4px', color: '#000080' }}>
-                Transaction Archives — {history.length} record(s)
-              </div>
+      {view === 'history' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '4px', color: '#000080' }}>
+            Transaction Archives — {history.length} record(s)
+          </div>
 
-            {/* SIDEBAR / FOOTER SUMMARY */}
-            <div className="lg:col-span-4 lg:sticky lg:top-28">
-              <div className="bg-slate-900 text-white p-6 lg:p-8 rounded-3xl lg:rounded-[2.5rem] shadow-xl">
-                <div className="space-y-3 mb-6 text-[10px] uppercase font-bold tracking-widest">
-                   <div className="flex justify-between text-slate-400"><span>Subtotal</span><span>₹{billingSummary.subtotal.toFixed(2)}</span></div>
-                   <div className="flex justify-between text-emerald-400 items-center">
-                     <span>Discount %</span>
-                     <input type="number" className="bg-slate-800 rounded px-2 py-1 w-12 text-right outline-none" value={discount} onChange={e => setDiscount(Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)))} />
-                   </div>
-                   <div className="flex justify-between text-slate-400"><span>GST (CGST+SGST)</span><span>₹{(billingSummary.cgst + billingSummary.sgst).toFixed(2)}</span></div>
-                   <div className="h-px bg-white/10 my-2"></div>
-                   <h2 className="text-4xl lg:text-5xl font-black text-center py-2">₹{billingSummary.finalTotal.toFixed(0)}</h2>
+          {/* SIDEBAR / FOOTER SUMMARY */}
+          <div className="lg:col-span-4 lg:sticky lg:top-28">
+            <div className="bg-slate-900 text-white p-6 lg:p-8 rounded-3xl lg:rounded-[2.5rem] shadow-xl">
+              <div className="space-y-3 mb-6 text-[10px] uppercase font-bold tracking-widest">
+                <div className="flex justify-between text-slate-400"><span>Subtotal</span><span>₹{billingSummary.subtotal.toFixed(2)}</span></div>
+                <div className="flex justify-between text-emerald-400 items-center">
+                  <span>Discount %</span>
+                  <input type="number" className="bg-slate-800 rounded px-2 py-1 w-12 text-right outline-none" value={discount} onChange={e => setDiscount(Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)))} />
                 </div>
+                <div className="flex justify-between text-slate-400"><span>GST (CGST+SGST)</span><span>₹{(billingSummary.cgst + billingSummary.sgst).toFixed(2)}</span></div>
+                <div className="h-px bg-white/10 my-2"></div>
+                <h2 className="text-4xl lg:text-5xl font-black text-center py-2">₹{billingSummary.finalTotal.toFixed(0)}</h2>
+              </div>
                 
-                {!isDone ? (
-                  <button onClick={finalizeBill} disabled={cart.length === 0} className="w-full bg-blue-600 py-4 rounded-xl font-black uppercase tracking-widest hover:bg-blue-500 disabled:opacity-50">Confirm Bill</button>
-                ) : (
+              {!isDone ? (
+                <button
+                  onClick={finalizeBill}
+                  disabled={cart.length === 0}
+                  className="w-full bg-blue-600 py-4 rounded-xl font-black uppercase tracking-widest hover:bg-blue-500 disabled:opacity-50"
+                >
+                  Confirm Bill
+                </button>
+              ) : (
+                <>
                   <div className="space-y-3">
-                    <button onClick={() => generatePDF(history[0])} className="w-full bg-emerald-500 py-4 rounded-xl font-black uppercase">Download PDF</button>
-                    <button onClick={() => {setCart([]); setCustomer({name:'', phone:''}); setIsDone(false); setDiscount(0);}} className="w-full text-slate-400 font-bold uppercase text-[10px] text-center">New Bill</button>
+                    <button
+                      onClick={() => generatePDF(history[0])}
+                      className="w-full bg-emerald-500 py-4 rounded-xl font-black uppercase"
+                    >
+                      Download PDF
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setCart([]);
+                        setCustomer({ name: "", phone: "" });
+                        setIsDone(false);
+                        setDiscount(0);
+                      }}
+                      className="w-full text-slate-400 font-bold uppercase text-[10px] text-center"
+                    >
+                      New Bill
+                    </button>
                   </div>
-                  <div style={{ padding: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
+
+                  <div
+                    style={{
+                      padding: "8px",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: "16px",
+                    }}
+                  >
                     <div>
-                      <div style={{ fontWeight: 'bold' }}>{bill.customer.name || 'Walk-in Customer'}</div>
-                      <div style={{ fontSize: '10px', color: '#555' }}>
-                        {bill.customer.phone || 'No phone'} — {bill.items.length} item(s)
+                      <div style={{ fontWeight: "bold" }}>
+                        {bill.customer.name || "Walk-in Customer"}
+                      </div>
+
+                      <div
+                        style={{
+                          fontSize: "10px",
+                          color: "#555",
+                        }}
+                      >
+                        {bill.customer.phone || "No phone"} — {bill.items.length} item(s)
                       </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: '10px', color: '#808080' }}>GRAND TOTAL</div>
-                        <div style={{ fontFamily: 'Courier New, monospace', fontWeight: 'bold', fontSize: '16px', color: '#000080' }}>
+
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "12px",
+                      }}
+                    >
+                      <div style={{ textAlign: "right" }}>
+                        <div
+                          style={{
+                            fontSize: "10px",
+                            color: "#808080",
+                          }}
+                        >
+                          GRAND TOTAL
+                        </div>
+
+                        <div
+                          style={{
+                            fontFamily: "Courier New, monospace",
+                            fontWeight: "bold",
+                            fontSize: "16px",
+                            color: "#000080",
+                          }}
+                        >
                           Rs.{bill.finalTotal.toFixed(2)}
                         </div>
                       </div>
+
                       <button
                         className="win-btn"
-                        style={{ fontSize: '10px', height: '22px', padding: '1px 8px' }}
+                        style={{
+                          fontSize: "10px",
+                          height: "22px",
+                          padding: "1px 8px",
+                        }}
                         onClick={() => generatePDF(bill)}
                       >
                         📄 Export PDF
                       </button>
                     </div>
                   </div>
-                </div>
-              ))}
+                </>
+              )}
             </div>
-          )}
-        </div>
-
-        {/* Status Bar */}
-        <div className="win-statusbar">
-          <div className="win-statusbar-pane" style={{ flex: 1 }}>
-            Ready
           </div>
-        )}
 
-        {/* --- INVENTORY VIEW --- */}
-        {view === 'inventory' && (
-          <div className="space-y-6">
-             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-white p-6 rounded-2xl border shadow-sm">
-                   <p className="text-slate-400 text-[10px] font-black uppercase mb-1">Products</p>
-                   <p className="text-3xl font-black">{inventory.length}</p>
-                </div>
-                <div className="bg-white p-6 rounded-2xl border shadow-sm border-red-100">
-                   <p className="text-red-400 text-[10px] font-black uppercase mb-1">Low Stock</p>
-                   <p className="text-3xl font-black text-red-600">{inventory.filter(i => i.quantity < 10).length}</p>
-                </div>
-                <div className="bg-white p-6 rounded-2xl border shadow-sm">
-                   <p className="text-emerald-400 text-[10px] font-black uppercase mb-1">Stock Value</p>
-                   <p className="text-2xl font-black">₹{inventory.reduce((s, i) => s + (i.price * i.quantity), 0).toLocaleString('en-IN')}</p>
-                </div>
-             </div>
+          {/* Status Bar */}
+          <div className="win-statusbar">
+            <div className="win-statusbar-pane" style={{ flex: 1 }}>
+              Ready
+            </div>
 
-             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-2xl border">
-               <h2 className="text-xl font-black uppercase">Stock Manager</h2>
-               <button onClick={() => {setModalType('add_inventory'); setEditingItem({name:'', quantity:0, price:0, hsn:'', taxRate: 18})}} className="w-full sm:w-auto bg-blue-600 text-white px-6 py-3 rounded-xl font-black text-sm">ADD PRODUCT</button>
-             </div>
+            {/* --- INVENTORY VIEW --- */}
+            {view === 'inventory' && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="bg-white p-6 rounded-2xl border shadow-sm">
+                    <p className="text-slate-400 text-[10px] font-black uppercase mb-1">Products</p>
+                    <p className="text-3xl font-black">{inventory.length}</p>
+                  </div>
+                  <div className="bg-white p-6 rounded-2xl border shadow-sm border-red-100">
+                    <p className="text-red-400 text-[10px] font-black uppercase mb-1">Low Stock</p>
+                    <p className="text-3xl font-black text-red-600">{inventory.filter(i => i.quantity < 10).length}</p>
+                  </div>
+                  <div className="bg-white p-6 rounded-2xl border shadow-sm">
+                    <p className="text-emerald-400 text-[10px] font-black uppercase mb-1">Stock Value</p>
+                    <p className="text-2xl font-black">₹{inventory.reduce((s, i) => s + (i.price * i.quantity), 0).toLocaleString('en-IN')}</p>
+                  </div>
+                </div>
 
-             <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
-                <div className="overflow-x-auto">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-2xl border">
+                  <h2 className="text-xl font-black uppercase">Stock Manager</h2>
+                  <button onClick={() => { setModalType('add_inventory'); setEditingItem({ name: '', quantity: 0, price: 0, hsn: '', taxRate: 18 }) }} className="w-full sm:w-auto bg-blue-600 text-white px-6 py-3 rounded-xl font-black text-sm">ADD PRODUCT</button>
+                </div>
+
+                <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
+                  <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm">
-                    <thead className="bg-slate-50 border-b">
+                      <thead className="bg-slate-50 border-b">
                         <tr className="text-[10px] font-black text-slate-400 uppercase">
-                        <th className="p-4">Item Details</th>
-                        <th className="p-4">Stock</th>
-                        <th className="p-4">Price</th>
-                        <th className="p-4 text-right">Actions</th>
+                          <th className="p-4">Item Details</th>
+                          <th className="p-4">Stock</th>
+                          <th className="p-4">Price</th>
+                          <th className="p-4 text-right">Actions</th>
                         </tr>
-                    </thead>
-                    <tbody>
+                      </thead>
+                      <tbody>
                         {inventory.map(item => (
-                        <tr key={item.id} className="border-b last:border-0 hover:bg-slate-50">
+                          <tr key={item.id} className="border-b last:border-0 hover:bg-slate-50">
                             <td className="p-4">
-                                <p className="font-bold">{item.name}</p>
-                                <p className="text-[9px] text-slate-400">HSN: {item.hsn} | {item.taxRate}%</p>
+                              <p className="font-bold">{item.name}</p>
+                              <p className="text-[9px] text-slate-400">HSN: {item.hsn} | {item.taxRate}%</p>
                             </td>
                             <td className="p-4">
-                                <span className={`font-bold ${item.quantity < 10 ? 'text-red-500' : ''}`}>{item.quantity}</span>
+                              <span className={`font-bold ${item.quantity < 10 ? 'text-red-500' : ''}`}>{item.quantity}</span>
                             </td>
                             <td className="p-4 font-bold text-blue-600">₹{item.price.toFixed(0)}</td>
                             <td className="p-4 text-right space-x-2">
-                                <button onClick={() => {setModalType('edit_inventory'); setEditingItem(item)}} className="text-blue-600 font-bold text-[10px] uppercase">Edit</button>
-                                <button onClick={() => {setModalType('confirm_delete'); setItemToDelete(item)}} className="text-red-600 font-bold text-[10px] uppercase">Del</button>
+                              <button onClick={() => { setModalType('edit_inventory'); setEditingItem(item) }} className="text-blue-600 font-bold text-[10px] uppercase">Edit</button>
+                              <button onClick={() => { setModalType('confirm_delete'); setItemToDelete(item) }} className="text-red-600 font-bold text-[10px] uppercase">Del</button>
                             </td>
-                        </tr>
+                          </tr>
                         ))}
-                    </tbody>
+                      </tbody>
                     </table>
-                </div>
-             </div>
-          </div>
-        )}
-
-        {/* --- HISTORY VIEW --- */}
-        {view === 'history' && (
-          <div className="space-y-4">
-            <h2 className="text-xl font-black uppercase text-slate-400 mb-6">Recent Sales</h2>
-            {history.map((bill) => (
-              <div key={bill.billId} className="bg-white p-5 rounded-2xl border shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                  <p className="text-[8px] font-black text-slate-300 uppercase mb-1"># {bill.billId}</p>
-                  <p className="font-bold text-sm">{bill.date}</p>
-                  <p className="text-[10px] text-blue-500 font-bold uppercase">{bill.customer.name || 'Walk-in'}</p>
-                </div>
-                <div className="flex items-center justify-between w-full sm:w-auto gap-6">
-                  <div className="text-right">
-                    <p className="text-[8px] font-bold text-slate-300 uppercase">Total</p>
-                    <p className="text-xl font-black text-blue-600">₹{bill.finalTotal.toFixed(0)}</p>
                   </div>
-                  <button onClick={() => generatePDF(bill)} className="bg-slate-900 text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase">PDF</button>
                 </div>
               </div>
-            ))}
-            {history.length === 0 && <div className="p-20 text-center text-slate-300 italic border-2 border-dashed rounded-2xl">No sales found.</div>}
+            )}
+
+            {/* --- HISTORY VIEW --- */}
+            {view === 'history' && (
+              <div className="space-y-4">
+                <h2 className="text-xl font-black uppercase text-slate-400 mb-6">Recent Sales</h2>
+                {history.map((bill) => (
+                  <div key={bill.billId} className="bg-white p-5 rounded-2xl border shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                      <p className="text-[8px] font-black text-slate-300 uppercase mb-1"># {bill.billId}</p>
+                      <p className="font-bold text-sm">{bill.date}</p>
+                      <p className="text-[10px] text-blue-500 font-bold uppercase">{bill.customer.name || 'Walk-in'}</p>
+                    </div>
+                    <div className="flex items-center justify-between w-full sm:w-auto gap-6">
+                      <div className="text-right">
+                        <p className="text-[8px] font-bold text-slate-300 uppercase">Total</p>
+                        <p className="text-xl font-black text-blue-600">₹{bill.finalTotal.toFixed(0)}</p>
+                      </div>
+                      <button onClick={() => generatePDF(bill)} className="bg-slate-900 text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase">PDF</button>
+                    </div>
+                  </div>
+                ))}
+                {history.length === 0 && <div className="p-20 text-center text-slate-300 italic border-2 border-dashed rounded-2xl">No sales found.</div>}
+              </div>
+            )}
+
+
           </div>
-        )}
-
-
-      </div>
 
       
-    </div>
-  );
-}
+        </div>)}        </div>
+
+      )}
