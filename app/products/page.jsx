@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import ProductForm from "@/component/ProductForm";
-import ProductTable from "@/component/ProductTable";
+import ProductForm from "@/components/ProductForm";
+import ProductTable from "@/components/ProductTable";
 
 export default function ProductsPage() {
   const [refresh, setRefresh] = useState(0);

@@ -1,52 +1,49 @@
 "use client";
 
-import { useState } from "react";
-import Scanner from "@/component/Scanner";
-import Cart from "@/component/Cart";
-
+import { useRef, useState } from "react";
+import Scanner from "@/components/Scanner";
+import Cart from "@/components/Cart";
 import {
+  addBill,
   getProductByBarcode,
   getProducts,
   saveProducts,
-  addBill,
 } from "@/lib/storage";
 
 export default function BillingPage() {
+  const inputRef = useRef(null);
+
   const [barcode, setBarcode] = useState("");
   const [cart, setCart] = useState([]);
-  const [showScanner, setShowScanner] = useState(false);
 
-  function addToCart(code) {
-    const scanCode = code || barcode;
+  const addProduct = (code = barcode) => {
+    const value = code.trim();
 
-    if (!scanCode.trim()) return;
+    if (!value) return;
 
-    const product = getProductByBarcode(scanCode);
+    const product = getProductByBarcode(value);
 
     if (!product) {
-      alert("Product not found.");
+      alert("Product not found");
       return;
     }
 
     if (product.stock <= 0) {
-      alert("Out of Stock");
+      alert("Out of stock");
       return;
     }
 
     setCart((prev) => {
-      const exists = prev.find(
-        (item) => item.barcode === scanCode
+      const index = prev.findIndex(
+        (item) => item.barcode === value
       );
 
-      if (exists) {
-        return prev.map((item) =>
-          item.barcode === scanCode
-            ? {
-                ...item,
-                qty: item.qty + 1,
-              }
-            : item
-        );
+      if (index !== -1) {
+        const updated = [...prev];
+
+        updated[index].qty++;
+
+        return updated;
       }
 
       return [
@@ -59,17 +56,18 @@ export default function BillingPage() {
     });
 
     setBarcode("");
-  }
 
-  function generateBill() {
-    if (cart.length === 0) {
+    inputRef.current?.focus();
+  };
+
+  const generateBill = () => {
+    if (!cart.length) {
       alert("Cart is empty.");
       return;
     }
 
     const total = cart.reduce(
-      (sum, item) =>
-        sum + item.qty * item.sellingPrice,
+      (sum, item) => sum + item.qty * item.sellingPrice,
       0
     );
 
@@ -82,111 +80,84 @@ export default function BillingPage() {
 
     const products = getProducts();
 
-    const updatedProducts = products.map((product) => {
-      const cartItem = cart.find(
-        (item) => item.barcode === product.barcode
+    const updated = products.map((product) => {
+      const item = cart.find(
+        (cartItem) =>
+          cartItem.barcode === product.barcode
       );
 
-      if (!cartItem) return product;
+      if (!item) return product;
 
       return {
         ...product,
-        stock: product.stock - cartItem.qty,
+        stock: product.stock - item.qty,
       };
     });
 
-    saveProducts(updatedProducts);
+    saveProducts(updated);
 
     alert("Bill Generated");
 
     setCart([]);
-  }
+  };
 
   return (
-    <main className="min-h-screen bg-slate-100 p-8">
+    <main className="min-h-screen bg-slate-100 p-6">
 
       <div className="max-w-7xl mx-auto">
 
-        <h1 className="text-4xl font-bold mb-8">
+        <h1 className="text-3xl font-bold mb-6">
           Billing
         </h1>
 
-        <div className="grid lg:grid-cols-3 gap-8">
+        <div className="grid lg:grid-cols-3 gap-6">
 
-          {/* LEFT */}
+          {/* Scanner */}
 
-          <div className="space-y-6">
+          <div className="space-y-5">
 
-            <div className="bg-white rounded-2xl shadow-xl border p-6">
+            <Scanner
+              continuous
+              onDetected={addProduct}
+            />
 
-              <h2 className="text-xl font-bold mb-5">
-                Scan Product
+            <div className="bg-white rounded-2xl border shadow p-5">
+
+              <h2 className="font-semibold mb-3">
+                Manual Barcode
               </h2>
 
-              <div className="flex gap-3">
+              <div className="flex gap-2">
 
                 <input
+                  ref={inputRef}
                   value={barcode}
                   onChange={(e) =>
                     setBarcode(e.target.value)
                   }
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
-                      addToCart();
+                      addProduct();
                     }
                   }}
-                  placeholder="Scan or Enter Barcode"
+                  placeholder="Enter Barcode"
                   className="flex-1 border rounded-xl p-3"
                 />
 
                 <button
-                  onClick={() => setShowScanner(true)}
-                  className="bg-amber-500 text-white rounded-xl px-4"
+                  onClick={() => addProduct()}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 rounded-xl"
                 >
-                  📷
+                  Add
                 </button>
 
               </div>
-
-              <button
-                onClick={() => addToCart()}
-                className="mt-4 w-full bg-blue-600 text-white rounded-xl py-3"
-              >
-                Add Product
-              </button>
 
             </div>
 
-            {showScanner && (
-
-              <div className="bg-white rounded-2xl border p-5">
-
-                <Scanner
-                  onDetected={(barcode) => {
-                    setBarcode(barcode);
-
-                    addToCart(barcode);
-
-                    setShowScanner(false);
-                  }}
-                />
-
-                <button
-                  onClick={() =>
-                    setShowScanner(false)
-                  }
-                  className="mt-4 w-full bg-red-500 text-white rounded-xl py-2"
-                >
-                  Close Scanner
-                </button>
-
-              </div>
-
-            )}
-
           </div>
 
-          {/* RIGHT */}
+          {/* Cart */}
 
           <div className="lg:col-span-2">
 
