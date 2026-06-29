@@ -5,106 +5,141 @@ import { BrowserMultiFormatReader } from "@zxing/browser";
 
 export default function BarcodeScanner() {
   const videoRef = useRef(null);
+  const canvasRef = useRef(null);
 
-  const [barcode, setBarcode] = useState("");
-  const [found, setFound] = useState(false);
+  const [barcodes, setBarcodes] = useState([]);
+
+  const reader = useRef(new BrowserMultiFormatReader());
 
   useEffect(() => {
-    const reader = new BrowserMultiFormatReader();
-
-    let controls;
+    let stream;
 
     async function startCamera() {
-      controls = await reader.decodeFromVideoDevice(
-        undefined,
-        videoRef.current,
-        (result) => {
-          if (result) {
-            setBarcode(result.getText());
-            setFound(true);
-          } else {
-            setFound(false);
-          }
-        }
-      );
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: "environment",
+        },
+      });
+
+      videoRef.current.srcObject = stream;
+      await videoRef.current.play();
     }
 
     startCamera();
 
     return () => {
-      if (controls) controls.stop();
+      stream?.getTracks().forEach((track) => track.stop());
     };
   }, []);
+
+  const captureAndScan = async () => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    const ctx = canvas.getContext("2d");
+
+    ctx.drawImage(video, 0, 0);
+
+    try {
+      const result = await reader.current.decodeFromCanvas(canvas);
+
+      const code = result.getText();
+
+      setBarcodes((prev) => {
+        if (prev.find((b) => b.barcode === code)) return prev;
+
+        return [
+          ...prev,
+          {
+            id: Date.now(),
+            barcode: code,
+          },
+        ];
+      });
+    } catch (err) {
+      alert("Barcode not found");
+    }
+  };
 
   return (
     <div
       style={{
-        maxWidth: 500,
-        margin: "40px auto",
-        textAlign: "center",
+        maxWidth: 700,
+        margin: "30px auto",
       }}
     >
-      <h2>Scan Barcode</h2>
+      <h2>Barcode Scanner</h2>
 
-      <div
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
         style={{
-          border: `6px solid ${found ? "#16a34a" : "#facc15"}`,
-          borderRadius: 16,
-          overflow: "hidden",
-          transition: "0.2s",
-          position: "relative",
+          width: "100%",
+          border: "4px solid orange",
+          borderRadius: 12,
         }}
-      >
-        <video
-          ref={videoRef}
-          autoPlay
-          playsInline
-          muted
-          style={{
-            width: "100%",
-            display: "block",
-          }}
-        />
+      />
 
-        {!found && (
-          <div
-            style={{
-              position: "absolute",
-              bottom: 15,
-              left: 0,
-              right: 0,
-              color: "#fff",
-              fontWeight: "bold",
-              textShadow: "0 0 8px black",
-            }}
-          >
-            Point camera at barcode
-          </div>
-        )}
-      </div>
-
-      <div
+      <canvas
+        ref={canvasRef}
         style={{
+          display: "none",
+        }}
+      />
+
+      <button
+        onClick={captureAndScan}
+        style={{
+          width: "100%",
           marginTop: 20,
           padding: 15,
-          borderRadius: 12,
-          background: found ? "#dcfce7" : "#fef9c3",
-          border: `2px solid ${found ? "#16a34a" : "#eab308"}`,
+          fontSize: 18,
+          cursor: "pointer",
         }}
       >
-        <h3>
-          {found ? "✅ Barcode Found" : "🔍 Waiting for barcode..."}
-        </h3>
+        📸 Capture & Scan
+      </button>
 
-        <h2
-          style={{
-            fontFamily: "monospace",
-            letterSpacing: 2,
-          }}
-        >
-          {barcode || "--------"}
-        </h2>
-      </div>
+      <h3 style={{ marginTop: 30 }}>
+        Scanned Barcodes
+      </h3>
+
+      <table
+        border="1"
+        cellPadding="10"
+        style={{
+          width: "100%",
+          borderCollapse: "collapse",
+        }}
+      >
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Barcode</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {barcodes.map((item, index) => (
+            <tr key={item.id}>
+              <td>{index + 1}</td>
+              <td>{item.barcode}</td>
+            </tr>
+          ))}
+
+          {barcodes.length === 0 && (
+            <tr>
+              <td colSpan="2" align="center">
+                No Barcode Scanned
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
     </div>
   );
 }
