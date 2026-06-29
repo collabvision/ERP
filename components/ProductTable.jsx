@@ -1,85 +1,97 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { getProducts, updateProduct, deleteProduct } from "@/lib/storage";
+import { deleteProduct, getProducts, updateProduct } from "@/lib/storage";
 
 export default function ProductTable({ refresh }) {
   const [products, setProducts] = useState([]);
   const [search, setSearch] = useState("");
-
   const [editing, setEditing] = useState(null);
-
-  const loadProducts = () => {
-    setProducts(getProducts());
-  };
 
   useEffect(() => {
     loadProducts();
   }, [refresh]);
 
-  const filtered = useMemo(() => {
-    return products.filter((p) => {
+  const loadProducts = () => {
+    setProducts(getProducts());
+  };
+
+  const filteredProducts = useMemo(() => {
+    return products.filter((item) => {
       const value = search.toLowerCase();
 
       return (
-        p.name.toLowerCase().includes(value) ||
-        p.barcode.includes(value) ||
-        p.brand.toLowerCase().includes(value) ||
-        p.category.toLowerCase().includes(value)
+        item.name.toLowerCase().includes(value) ||
+        item.barcode.includes(value) ||
+        item.brand.toLowerCase().includes(value) ||
+        item.category.toLowerCase().includes(value)
       );
     });
   }, [products, search]);
 
   const saveEdit = () => {
     updateProduct(editing);
-
     loadProducts();
-
     setEditing(null);
   };
 
   return (
     <div className="bg-white rounded-2xl shadow-xl border">
-      <div className="p-6 border-b flex justify-between items-center">
+      {/* Header */}
+
+      <div className="p-5 border-b flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
         <h2 className="text-2xl font-bold">Products</h2>
 
         <input
-          placeholder="Search..."
-          className="border rounded-xl px-4 py-2 w-72"
+          placeholder="Search Product..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
+          className="border rounded-xl px-4 py-2 w-full md:w-80"
         />
       </div>
 
-      <div className="overflow-auto">
-        <table className="w-full">
-          <thead className="bg-slate-100">
-            <tr>
-              <th className="p-3 text-left">Barcode</th>
+      {/* Table */}
 
-              <th>Name</th>
-
-              <th>Brand</th>
-
-              <th>Category</th>
-
-              <th>Stock</th>
-
-              <th>Price</th>
-
-              <th>Action</th>
+      <div className="overflow-x-auto">
+        <table className="min-w-[1200px] w-full">
+          <thead className="sticky top-0 bg-slate-100">
+            <tr className="text-sm">
+              <th className="text-left p-4">Barcode</th>
+              <th className="text-left p-4">Name</th>
+              <th className="text-left p-4">Category</th>
+              <th className="text-left p-4">Brand</th>
+              <th className="text-center p-4">Unit</th>
+              <th className="text-right p-4">Purchase</th>
+              <th className="text-right p-4">Selling</th>
+              <th className="text-center p-4">GST</th>
+              <th className="text-center p-4">Stock</th>
+              <th className="text-center p-4">Action</th>
             </tr>
           </thead>
 
           <tbody>
-            {filtered.map((item) => (
-              <tr key={item.id} className="border-b hover:bg-slate-50">
-                <td className="p-3 font-mono">{item.barcode}</td>
+            {filteredProducts.length === 0 && (
+              <tr>
+                <td colSpan={10} className="text-center py-10 text-slate-500">
+                  No Products Found
+                </td>
+              </tr>
+            )}
 
-                <td>
+            {filteredProducts.map((item, index) => (
+              <tr
+                key={item.id}
+                className={`border-b hover:bg-blue-50 ${
+                  index % 2 === 0 ? "bg-white" : "bg-slate-50"
+                }`}
+              >
+                <td className="p-4 font-mono whitespace-nowrap">
+                  {item.barcode}
+                </td>
+
+                <td className="p-4">
                   {editing?.id === item.id ? (
                     <input
-                      className="border rounded px-2"
                       value={editing.name}
                       onChange={(e) =>
                         setEditing({
@@ -87,19 +99,30 @@ export default function ProductTable({ refresh }) {
                           name: e.target.value,
                         })
                       }
+                      className="border rounded px-2 py-1 w-full"
                     />
                   ) : (
                     item.name
                   )}
                 </td>
 
-                <td>{item.brand}</td>
+                <td className="p-4">{item.category}</td>
 
-                <td>{item.category}</td>
+                <td className="p-4">{item.brand}</td>
 
-                <td>
+                <td className="p-4 text-center">{item.unit}</td>
+
+                <td className="p-4 text-right">₹{item.purchasePrice}</td>
+
+                <td className="p-4 text-right font-semibold">
+                  ₹{item.sellingPrice}
+                </td>
+
+                <td className="p-4 text-center">{item.gst}%</td>
+
+                <td className="p-4 text-center">
                   <span
-                    className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    className={`px-3 py-1 rounded-full text-xs font-semibold ${
                       item.stock <= item.lowStock
                         ? "bg-red-100 text-red-600"
                         : "bg-green-100 text-green-700"
@@ -109,10 +132,8 @@ export default function ProductTable({ refresh }) {
                   </span>
                 </td>
 
-                <td>₹{item.sellingPrice}</td>
-
-                <td>
-                  <div className="flex gap-2">
+                <td className="p-4">
+                  <div className="flex justify-center gap-2">
                     {editing?.id === item.id ? (
                       <button
                         onClick={saveEdit}
@@ -142,14 +163,6 @@ export default function ProductTable({ refresh }) {
                 </td>
               </tr>
             ))}
-
-            {!filtered.length && (
-              <tr>
-                <td colSpan={7} className="text-center py-10 text-slate-500">
-                  No Products Found
-                </td>
-              </tr>
-            )}
           </tbody>
         </table>
       </div>

@@ -35,147 +35,209 @@ export default function Cart({
 
   const removeItem = (barcode) => {
     setCart((prev) =>
-      prev.filter(
-        (item) => item.barcode !== barcode
-      )
+      prev.filter((item) => item.barcode !== barcode)
     );
   };
 
   const subtotal = cart.reduce(
-    (sum, item) =>
-      sum + item.qty * item.sellingPrice,
+    (sum, item) => sum + item.qty * item.sellingPrice,
     0
   );
 
   return (
     <div className="bg-white rounded-2xl shadow-xl border">
 
-      <div className="p-5 border-b">
+      {/* Header */}
+
+      <div className="p-5 border-b flex justify-between items-center">
 
         <h2 className="text-2xl font-bold">
-          Cart
+          Billing Cart
         </h2>
 
-      </div>
-
-      <div className="divide-y">
-
-        {cart.length === 0 && (
-
-          <div className="p-10 text-center text-slate-500">
-
-            No Products Added
-
-          </div>
-
-        )}
-
-        {cart.map((item) => (
-
-          <div
-            key={item.barcode}
-            className="flex justify-between items-center p-5"
-          >
-
-            <div>
-
-              <h3 className="font-semibold">
-
-                {item.name}
-
-              </h3>
-
-              <p className="text-sm text-slate-500">
-
-                {item.barcode}
-
-              </p>
-
-            </div>
-
-            <div className="flex items-center gap-3">
-
-              <button
-                onClick={() =>
-                  decreaseQty(item.barcode)
-                }
-                className="w-8 h-8 rounded bg-red-100"
-              >
-                -
-              </button>
-
-              <span className="font-bold">
-
-                {item.qty}
-
-              </span>
-
-              <button
-                onClick={() =>
-                  increaseQty(item.barcode)
-                }
-                className="w-8 h-8 rounded bg-green-100"
-              >
-                +
-              </button>
-
-            </div>
-
-            <div>
-
-              ₹{item.sellingPrice}
-
-            </div>
-
-            <div className="font-bold">
-
-              ₹
-              {item.qty *
-                item.sellingPrice}
-
-            </div>
-
-            <button
-              onClick={() =>
-                removeItem(item.barcode)
-              }
-              className="text-red-500"
-            >
-              Delete
-            </button>
-
-          </div>
-
-        ))}
+        <span className="text-sm text-slate-500">
+          {cart.length} Item(s)
+        </span>
 
       </div>
 
-      <div className="border-t p-5">
+      {/* Responsive Table */}
+
+      <div className="overflow-x-auto">
+
+        <table className="min-w-[900px] w-full">
+
+          <thead className="bg-slate-100 sticky top-0">
+
+            <tr>
+
+              <th className="p-4 text-left">Product</th>
+
+              <th className="p-4 text-center">
+                Qty
+              </th>
+
+              <th className="p-4 text-right">
+                Price
+              </th>
+
+              <th className="p-4 text-right">
+                Total
+              </th>
+
+              <th className="p-4 text-center">
+                Action
+              </th>
+
+            </tr>
+
+          </thead>
+
+          <tbody>
+
+            {cart.length === 0 && (
+
+              <tr>
+
+                <td
+                  colSpan={5}
+                  className="text-center py-12 text-slate-500"
+                >
+                  No Products Added
+                </td>
+
+              </tr>
+
+            )}
+
+            {cart.map((item, index) => (
+
+              <tr
+                key={item.barcode}
+                className={`border-b hover:bg-blue-50 ${
+                  index % 2 === 0
+                    ? "bg-white"
+                    : "bg-slate-50"
+                }`}
+              >
+
+                <td className="p-4">
+
+                  <div>
+
+                    <div className="font-semibold">
+                      {item.name}
+                    </div>
+
+                    <div className="text-xs text-slate-500 font-mono">
+                      {item.barcode}
+                    </div>
+
+                  </div>
+
+                </td>
+
+                <td className="p-4">
+
+                  <div className="flex justify-center items-center gap-3">
+
+                    <button
+                      onClick={() =>
+                        decreaseQty(item.barcode)
+                      }
+                      className="w-8 h-8 rounded-lg bg-red-100 hover:bg-red-200"
+                    >
+                      −
+                    </button>
+
+                    <span className="font-bold w-8 text-center">
+                      {item.qty}
+                    </span>
+
+                    <button
+                      onClick={() =>
+                        increaseQty(item.barcode)
+                      }
+                      className="w-8 h-8 rounded-lg bg-green-100 hover:bg-green-200"
+                    >
+                      +
+                    </button>
+
+                  </div>
+
+                </td>
+
+                <td className="p-4 text-right">
+                  ₹{item.sellingPrice}
+                </td>
+
+                <td className="p-4 text-right font-bold text-blue-600">
+                  ₹{item.qty * item.sellingPrice}
+                </td>
+
+                <td className="p-4 text-center">
+
+                  <button
+                    onClick={() =>
+                      removeItem(item.barcode)
+                    }
+                    className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg"
+                  >
+                    Delete
+                  </button>
+
+                </td>
+
+              </tr>
+
+            ))}
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+      {/* Footer */}
+
+      <div className="border-t p-6 bg-slate-50">
 
         <div className="flex justify-between mb-3">
 
-          <span>Total</span>
+          <span className="font-medium">
+            Subtotal
+          </span>
 
           <span className="font-bold">
-
             ₹{subtotal}
-
           </span>
 
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="flex justify-between mb-6">
+
+          <span className="text-xl font-bold">
+            Grand Total
+          </span>
+
+          <span className="text-2xl font-bold text-blue-600">
+            ₹{subtotal}
+          </span>
+
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
 
           <button
             onClick={() => setCart([])}
-            className="bg-red-500 text-white rounded-xl py-3"
+            className="rounded-xl bg-red-500 hover:bg-red-600 text-white py-3 font-semibold"
           >
             Clear Cart
           </button>
 
           <button
             onClick={generateBill}
-            className="bg-blue-600 text-white rounded-xl py-3"
+            className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white py-3 font-semibold"
           >
             Generate Bill
           </button>
