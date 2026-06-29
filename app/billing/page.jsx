@@ -10,6 +10,7 @@ import {
   saveProducts,
 } from "@/lib/storage";
 import Navbar from "../../components/Navbar";
+import { Toaster } from "react-hot-toast";
 
 export default function BillingPage() {
   const inputRef = useRef(null);
@@ -102,96 +103,146 @@ export default function BillingPage() {
   return (
     <>
       {" "}
-      <Navbar />
-      <main className="min-h-screen bg-slate-100">
-        <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-          {/* Header */}
+          <Navbar />
+           <Toaster
+    position="top-right"
+    toastOptions={{
+      duration: 1500,
+    }}
+  />
+  <main className="min-h-screen bg-slate-100">
+    <div className="mx-auto w-full max-w-[1700px] px-3 py-4 sm:px-5 lg:px-6">
 
-          <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-slate-900 sm:text-4xl">
-                Billing
-              </h1>
+      {/* Header */}
 
-              <p className="mt-1 text-sm text-slate-500">
-                Scan products and generate customer bills.
-              </p>
-            </div>
+      <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
 
-            <div className="rounded-xl border bg-white px-4 py-3 shadow-sm">
-              <p className="text-xs uppercase tracking-wide text-slate-500">
-                POS
-              </p>
+        <div>
 
-              <p className="font-semibold">Billing Counter</p>
-            </div>
-          </div>
+          <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl xl:text-4xl">
+            Billing
+          </h1>
 
-          {/* Layout */}
+          <p className="mt-1 text-sm text-slate-500">
+            Scan products and generate invoices
+          </p>
 
-          <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
-            {/* Left */}
-
-            <div className="space-y-6 xl:col-span-4">
-              <div className="sticky top-6 space-y-6">
-                {/* Scanner */}
-
-                <div className="rounded-2xl border bg-white shadow-lg">
-                  <div className="border-b p-5">
-                    <h2 className="text-xl font-bold">Live Scanner</h2>
-
-                    <p className="mt-1 text-sm text-slate-500">
-                      Scan barcode using your camera
-                    </p>
-                  </div>
-
-                  <div className="p-4">
-                    <Scanner continuous onDetected={addProduct} />
-                  </div>
-                </div>
-
-                {/* Manual Barcode */}
-
-                <div className="rounded-2xl border bg-white shadow-lg">
-                  <div className="border-b p-5">
-                    <h2 className="text-lg font-semibold">Manual Barcode</h2>
-                  </div>
-
-                  <div className="p-5">
-                    <div className="flex flex-col gap-3 sm:flex-row">
-                      <input
-                        ref={inputRef}
-                        value={barcode}
-                        onChange={(e) => setBarcode(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            addProduct();
-                          }
-                        }}
-                        placeholder="Enter Barcode"
-                        className="flex-1 rounded-xl border px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                      />
-
-                      <button
-                        onClick={addProduct}
-                        className="rounded-xl bg-blue-600 px-8 py-3 font-medium text-white transition hover:bg-blue-700"
-                      >
-                        Add
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Right */}
-
-            <div className="xl:col-span-8">
-              <Cart cart={cart} setCart={setCart} generateBill={generateBill} />
-            </div>
-          </div>
         </div>
-      </main>
+
+        <div className="rounded-xl border bg-white px-5 py-3 shadow-sm">
+
+          <div className="text-xs uppercase tracking-wider text-slate-500">
+            POS
+          </div>
+
+          <div className="font-semibold">
+            Billing Counter
+          </div>
+
+        </div>
+
+      </div>
+
+      {/* Content */}
+
+      <div className="grid gap-5 xl:grid-cols-[420px_minmax(0,1fr)]">
+
+        {/* LEFT */}
+
+        <aside className="space-y-5">
+
+          <div className="xl:sticky xl:top-5 space-y-5">
+
+            {/* Scanner */}
+
+            <section className="overflow-hidden rounded-2xl border bg-white shadow">
+
+              <div className="border-b px-5 py-4">
+
+                <h2 className="text-lg font-bold">
+                  Live Scanner
+                </h2>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  Camera remains active during billing
+                </p>
+
+              </div>
+
+              <div className="p-4">
+
+                <Scanner
+                  continuous
+                  onDetected={(barcode) =>
+                    addProduct(barcode, true)
+                  }
+                />
+
+              </div>
+
+            </section>
+
+            {/* Manual Barcode */}
+
+            <section className="overflow-hidden rounded-2xl border bg-white shadow">
+
+              <div className="border-b px-5 py-4">
+
+                <h2 className="font-semibold">
+                  Manual Barcode
+                </h2>
+
+              </div>
+
+              <div className="space-y-3 p-5">
+
+                <input
+                  ref={inputRef}
+                  value={barcode}
+                  onChange={(e) =>
+                    setBarcode(e.target.value)
+                  }
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      addProduct();
+                    }
+                  }}
+                  placeholder="Enter Barcode"
+                  className="w-full rounded-xl border px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-300"
+                />
+
+                <button
+                  onClick={() => addProduct()}
+                  className="w-full rounded-xl bg-blue-600 py-3 font-semibold text-white transition hover:bg-blue-700"
+                >
+                  Add Product
+                </button>
+
+              </div>
+
+            </section>
+
+          </div>
+
+        </aside>
+
+        {/* RIGHT */}
+
+        <section className="min-w-0">
+
+          <Cart
+            cart={cart}
+            setCart={setCart}
+            generateBill={generateBill}
+          />
+
+        </section>
+
+      </div>
+
+    </div>
+  </main>
+
     </>
   );
 }
