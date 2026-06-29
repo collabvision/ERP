@@ -1,68 +1,82 @@
+"use client";
 
-"use client"
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { BrowserMultiFormatReader } from "@zxing/browser";
 
 export default function BarcodeScanner() {
-  const videoRef = useRef(null);
-
   const [barcode, setBarcode] = useState("");
-  const [isScanned, setIsScanned] = useState(false);
+  const [preview, setPreview] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    const codeReader = new BrowserMultiFormatReader();
-    let controls;
+  const codeReader = new BrowserMultiFormatReader();
 
-    async function startScanner() {
-      controls = await codeReader.decodeFromVideoDevice(
-        undefined,
-        videoRef.current,
-        (result) => {
-          if (result) {
-            setBarcode(result.getText());
-            setIsScanned(true);
+  const scanImage = async (e) => {
+    const file = e.target.files[0];
 
-            // Stop scanning after first success
-            controls.stop();
-          }
-        }
+    if (!file) return;
+
+    setPreview(URL.createObjectURL(file));
+    setLoading(true);
+
+    try {
+      const result = await codeReader.decodeFromImageUrl(
+        URL.createObjectURL(file)
       );
+
+      setBarcode(result.getText());
+    } catch (err) {
+      alert("No barcode found in image");
+      console.log(err);
+      setBarcode("");
     }
 
-    startScanner();
-
-    return () => {
-      if (controls) controls.stop();
-    };
-  }, []);
+    setLoading(false);
+  };
 
   return (
-    <div>
-      <video
-        ref={videoRef}
-        style={{
-          width: 500,
-          border: isScanned ? "5px solid green" : "5px solid gray",
-          borderRadius: 10,
-        }}
+    <div
+      style={{
+        width: 400,
+        margin: "40px auto",
+        textAlign: "center",
+      }}
+    >
+      <h2>Scan Barcode from Image</h2>
+
+      <input
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={scanImage}
       />
 
-      <h2>Barcode: {barcode}</h2>
+      {preview && (
+        <img
+          src={preview}
+          alt="preview"
+          style={{
+            width: "100%",
+            marginTop: 20,
+            borderRadius: 10,
+            border: "2px solid #ccc",
+          }}
+        />
+      )}
 
-      {isScanned && (
+      {loading && <h3>Scanning...</h3>}
+
+      {barcode && (
         <div
           style={{
             marginTop: 20,
-            padding: 15,
             background: "#d4edda",
-            color: "#155724",
+            padding: 15,
+            borderRadius: 10,
             border: "2px solid green",
-            borderRadius: 8,
-            fontWeight: "bold",
-            width: 300,
           }}
         >
-          ✅ Barcode Scanned Successfully
+          <h3>✅ Barcode Found</h3>
+          <h2>{barcode}</h2>
         </div>
       )}
     </div>
