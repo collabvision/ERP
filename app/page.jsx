@@ -5,7 +5,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 export default function Home() {
-  const [view, setView] = useState('billing'); // 'billing', 'inventory', 'history'
+  const [view, setView] = useState('billing');
   const [inventory, setInventory] = useState([
     { id: 1, name: 'Logitech Wireless Mouse', quantity: 50, price: 1059.32, hsn: '8471', taxRate: 18 },
     { id: 2, name: 'Mechanical Keyboard RGB', quantity: 30, price: 3813.56, hsn: '8471', taxRate: 18 },
@@ -60,22 +60,17 @@ export default function Home() {
     const taxableAmount = subtotal - discountAmount;
     
     const totalTax = cart.reduce((sum, item) => {
-        const itemTaxable = (item.price * item.qty) * (1 - discount/100);
-        return sum + (itemTaxable * (item.taxRate / 100));
+      const itemTaxable = (item.price * item.qty) * (1 - discount / 100);
+      return sum + (itemTaxable * (item.taxRate / 100));
     }, 0);
-
     const cgst = totalTax / 2;
     const sgst = totalTax / 2;
     const finalTotal = taxableAmount + totalTax;
-
     return { subtotal, discountAmount, taxableAmount, cgst, sgst, finalTotal };
   }, [cart, discount]);
 
   const handleSaveItem = () => {
-    if (!editingItem.name || editingItem.price <= 0) {
-        setError("Invalid Product Details");
-        return;
-    }
+    if (!editingItem.name || editingItem.price <= 0) { setError("Invalid Product Details"); return; }
     if (modalType === 'add_inventory') {
       setInventory([...inventory, { ...editingItem, id: Date.now() }]);
     } else {
@@ -90,18 +85,10 @@ export default function Home() {
     closeModal();
   };
 
-  const closeModal = () => {
-    setModalType(null);
-    setEditingItem(null);
-    setItemToDelete(null);
-  };
+  const closeModal = () => { setModalType(null); setEditingItem(null); setItemToDelete(null); };
 
   const addToCart = (product) => {
-    if (product.quantity <= 0) {
-      setError(`${product.name} is Out of Stock!`);
-      setTimeout(() => setError(null), 3000);
-      return;
-    }
+    if (product.quantity <= 0) { setError(`${product.name} is Out of Stock!`); setTimeout(() => setError(null), 3000); return; }
     const existing = cart.find(item => item.id === product.id);
     if (existing) return;
     setCart([...cart, { ...product, qty: 1 }]);
@@ -112,11 +99,10 @@ export default function Home() {
     const qty = Math.max(0, parseInt(val) || 0);
     const stock = inventory.find(i => i.id === id).quantity;
     if (qty > stock) {
-        setError(`Stock limit: ${stock}`);
-        setTimeout(() => setError(null), 2000);
-        setCart(cart.map(c => c.id === id ? {...c, qty: stock} : c));
+      setError(`Stock limit: ${stock}`); setTimeout(() => setError(null), 2000);
+      setCart(cart.map(c => c.id === id ? { ...c, qty: stock } : c));
     } else {
-        setCart(cart.map(c => c.id === id ? {...c, qty} : c));
+      setCart(cart.map(c => c.id === id ? { ...c, qty } : c));
     }
   };
 
@@ -240,11 +226,66 @@ export default function Home() {
                           <span className="font-bold text-sm">{item.name}</span>
                           <span className="text-blue-600 font-black">₹{item.price.toFixed(0)}</span>
                         </button>
-                      ))}
-                    </div>
-                  )}
+                        <button
+                          className="win-btn"
+                          style={{ width: '100%', height: '28px' }}
+                          onClick={() => { setCart([]); setCustomer({ name: '', phone: '' }); setIsDone(false); setDiscount(0); }}
+                        >
+                          New Session
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              )}
+
+                {/* System info panel */}
+                <div className="win-groupbox" style={{ marginTop: '8px' }}>
+                  <span className="win-groupbox-label">System Info</span>
+                  <div style={{ paddingTop: '6px', fontSize: '10px', color: '#444', lineHeight: '1.6' }}>
+                    <div>Version: ERP_Lite 2.0</div>
+                    <div>User: Administrator</div>
+                    <div>Terminal: POS-01</div>
+                    <div style={{ color: cart.length > 0 ? '#008000' : '#808080' }}>
+                      Cart: {cart.length} item(s)
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* --- INVENTORY VIEW --- */}
+          {view === 'inventory' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+
+              {/* Metrics */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                {[
+                  { label: 'Product Master', value: inventory.length, color: '#000080' },
+                  { label: 'Low Stock Alerts', value: inventory.filter(i => i.quantity < 10).length, color: '#cc0000' },
+                  { label: 'Stock Value (Ex. Tax)', value: `Rs.${inventory.reduce((s, i) => s + (i.price * i.quantity), 0).toLocaleString('en-IN')}`, color: '#006400', small: true },
+                ].map((metric, idx) => (
+                  <div key={idx} className="win-groupbox">
+                    <span className="win-groupbox-label">{metric.label}</span>
+                    <div className="win-sunken" style={{ background: '#fff', padding: '8px', textAlign: 'center', marginTop: '8px' }}>
+                      <span style={{ fontSize: metric.small ? '16px' : '28px', fontWeight: 'bold', fontFamily: 'Courier New, monospace', color: metric.color }}>{metric.value}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Actions Bar */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#d4d0c8', padding: '4px 0' }}>
+                <div className="win-toolbar" style={{ flex: 1, border: 'none', borderBottom: 'none', padding: '0' }}>
+                  <button
+                    className="win-btn win-btn-primary"
+                    onClick={() => { setModalType('add_inventory'); setEditingItem({ name: '', quantity: 0, price: 0, hsn: '', taxRate: 18 }); }}
+                  >
+                    + Add New Product
+                  </button>
+                </div>
+                <span style={{ fontSize: '11px', color: '#555' }}>Master Database — {inventory.length} record(s)</span>
+              </div>
 
               <div className={`bg-white rounded-2xl border overflow-hidden ${isDone ? 'opacity-50' : ''}`}>
                 <div className="overflow-x-auto">
@@ -275,6 +316,14 @@ export default function Home() {
                 {cart.length === 0 && <p className="p-10 text-center text-slate-300 italic">Cart is empty</p>}
               </div>
             </div>
+          )}
+
+          {/* --- HISTORY VIEW --- */}
+          {view === 'history' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '4px', color: '#000080' }}>
+                Transaction Archives — {history.length} record(s)
+              </div>
 
             {/* SIDEBAR / FOOTER SUMMARY */}
             <div className="lg:col-span-4 lg:sticky lg:top-28">
@@ -297,9 +346,39 @@ export default function Home() {
                     <button onClick={() => generatePDF(history[0])} className="w-full bg-emerald-500 py-4 rounded-xl font-black uppercase">Download PDF</button>
                     <button onClick={() => {setCart([]); setCustomer({name:'', phone:''}); setIsDone(false); setDiscount(0);}} className="w-full text-slate-400 font-bold uppercase text-[10px] text-center">New Bill</button>
                   </div>
-                )}
-              </div>
+                  <div style={{ padding: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
+                    <div>
+                      <div style={{ fontWeight: 'bold' }}>{bill.customer.name || 'Walk-in Customer'}</div>
+                      <div style={{ fontSize: '10px', color: '#555' }}>
+                        {bill.customer.phone || 'No phone'} — {bill.items.length} item(s)
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '10px', color: '#808080' }}>GRAND TOTAL</div>
+                        <div style={{ fontFamily: 'Courier New, monospace', fontWeight: 'bold', fontSize: '16px', color: '#000080' }}>
+                          Rs.{bill.finalTotal.toFixed(2)}
+                        </div>
+                      </div>
+                      <button
+                        className="win-btn"
+                        style={{ fontSize: '10px', height: '22px', padding: '1px 8px' }}
+                        onClick={() => generatePDF(bill)}
+                      >
+                        📄 Export PDF
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
+          )}
+        </div>
+
+        {/* Status Bar */}
+        <div className="win-statusbar">
+          <div className="win-statusbar-pane" style={{ flex: 1 }}>
+            Ready
           </div>
         )}
 
