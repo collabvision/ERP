@@ -32,7 +32,7 @@ export default function Navbar() {
           href="/"
           className="text-2xl font-bold text-blue-600"
         >
-        Software 2
+        Software 7
         </Link>
 
         {/* Desktop */}
