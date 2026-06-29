@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -11,6 +11,36 @@ export default function Home() {
     { id: 2, name: 'Mechanical Keyboard RGB', quantity: 30, price: 3813.56, hsn: '8471', taxRate: 18 },
     { id: 3, name: 'Dell 24" IPS Monitor', quantity: 15, price: 10169.49, hsn: '8528', taxRate: 18 },
   ]);
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [showInstallBtn, setShowInstallBtn] = useState(false);
+
+  // --- PWA INSTALLATION LOGIC ---
+  useEffect(() => {
+    // Register Service Worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js');
+    }
+
+    // Capture the install event
+    const handler = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallBtn(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setShowInstallBtn(false);
+    }
+    setDeferredPrompt(null);
+  };
 
   const [cart, setCart] = useState([]);
   const [history, setHistory] = useState([]);
@@ -20,7 +50,7 @@ export default function Home() {
   const [isDone, setIsDone] = useState(false);
   const [error, setError] = useState(null);
 
-  const [modalType, setModalType] = useState(null);
+  const [modalType, setModalType] = useState(null); 
   const [editingItem, setEditingItem] = useState(null);
   const [itemToDelete, setItemToDelete] = useState(null);
 
@@ -28,6 +58,7 @@ export default function Home() {
     const subtotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
     const discountAmount = (subtotal * discount) / 100;
     const taxableAmount = subtotal - discountAmount;
+    
     const totalTax = cart.reduce((sum, item) => {
       const itemTaxable = (item.price * item.qty) * (1 - discount / 100);
       return sum + (itemTaxable * (item.taxRate / 100));
@@ -76,400 +107,168 @@ export default function Home() {
   };
 
   const finalizeBill = () => {
-    const newBill = { billId: `V9-INV-${Date.now().toString().slice(-6)}`, date: new Date().toLocaleString('en-IN'), customer: { ...customer }, items: [...cart], ...billingSummary };
-    setInventory(inventory.map(inv => { const sold = cart.find(c => c.id === inv.id); return sold ? { ...inv, quantity: inv.quantity - sold.qty } : inv; }));
+    const newBill = {
+      billId: `ERP-INV-${Date.now().toString().slice(-6)}`,
+      date: new Date().toLocaleString('en-IN'),
+      customer: { ...customer },
+      items: [...cart],
+      ...billingSummary
+    };
+    setInventory(inventory.map(inv => {
+      const sold = cart.find(c => c.id === inv.id);
+      return sold ? { ...inv, quantity: inv.quantity - sold.qty } : inv;
+    }));
     setHistory([newBill, ...history]);
     setIsDone(true);
   };
 
   const generatePDF = (bill) => {
     const doc = new jsPDF();
-    doc.setFontSize(22); doc.text("ERP_Lite PRO SYSTEMS", 14, 20);
-    doc.setFontSize(10); doc.setTextColor(100); doc.text("GSTIN: 27AAAAA0000A1Z5 | Kolhapur, Maharashtra", 14, 28);
-    doc.setTextColor(0);
-    doc.text(`Invoice: ${bill.billId}`, 14, 40); doc.text(`Date: ${bill.date}`, 14, 46);
-    doc.text(`Customer: ${bill.customer.name || 'Walk-in'}`, 14, 52); doc.text(`Phone: ${bill.customer.phone || 'N/A'}`, 14, 58);
+    doc.setFontSize(22);
+    doc.text("ERP_Lite PRO SYSTEMS", 14, 20);
+    doc.setFontSize(10);
+    doc.text("GSTIN: 27AAAAA0000A1Z5 | Kolhapur, Maharashtra", 14, 28);
+    doc.text(`Invoice: ${bill.billId} | Date: ${bill.date}`, 14, 40);
     autoTable(doc, {
-      startY: 65,
-      head: [['Product', 'HSN', 'Rate', 'Qty', 'GST%', 'Total']],
-      body: bill.items.map(i => [i.name, i.hsn, i.price.toFixed(2), i.qty, i.taxRate + '%', (i.price * i.qty).toFixed(2)]),
-      foot: [
-        ['', '', '', '', 'Subtotal', `Rs. ${bill.subtotal.toFixed(2)}`],
-        ['', '', '', '', 'Discount', `- Rs. ${bill.discountAmount.toFixed(2)}`],
-        ['', '', '', '', 'CGST (9%)', `Rs. ${bill.cgst.toFixed(2)}`],
-        ['', '', '', '', 'SGST (9%)', `Rs. ${bill.sgst.toFixed(2)}`],
-        ['', '', '', '', 'GRAND TOTAL', `Rs. ${bill.finalTotal.toFixed(2)}`]
-      ],
-      theme: 'grid',
+      startY: 50,
+      head: [['Product', 'HSN', 'Rate', 'Qty', 'Total']],
+      body: bill.items.map(i => [i.name, i.hsn, i.price.toFixed(2), i.qty, (i.price * i.qty).toFixed(2)]),
+      foot: [['', '', '', 'Total', `Rs. ${bill.finalTotal.toFixed(2)}`]],
     });
     doc.save(`${bill.billId}.pdf`);
   };
 
   return (
-    <div style={{ background: '#008080', minHeight: '100vh', padding: '4px', fontFamily: 'Tahoma, MS Sans Serif, Arial, sans-serif', fontSize: '11px' }}>
-
-      {/* ERROR TOAST - Win2000 style message box */}
+    <div className="min-h-screen bg-slate-50 text-slate-900 pb-32 lg:pb-20">
+      
       {error && (
-        <div className="win-overlay" style={{ background: 'transparent', pointerEvents: 'none', zIndex: 300 }}>
-          <div className="win-toast" style={{ pointerEvents: 'auto', zIndex: 301 }}>
-            <span style={{ fontSize: '20px' }}>⚠</span>
-            <span style={{ fontWeight: 'bold' }}>{error}</span>
-          </div>
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[200] bg-red-600 text-white px-6 py-3 rounded-xl font-bold shadow-2xl animate-bounce text-sm">
+          ⚠️ {error}
         </div>
       )}
 
-      {/* MODAL SYSTEM */}
+      {/* --- MODAL --- */}
       {modalType && (
-        <div className="win-overlay">
-          <div className="win-window" style={{ width: '420px' }}>
-            {/* Title bar */}
-            <div className="win-titlebar">
-              <span className="win-titlebar-icon">🖥</span>
-              <span className="win-titlebar-text">
-                {modalType === 'confirm_delete' ? 'Confirm Deletion' : modalType === 'add_inventory' ? 'Add New Product' : 'Edit Product'}
-              </span>
-              <button className="win-titlebar-btn" onClick={closeModal} title="Close">✕</button>
-            </div>
-
-            <div style={{ padding: '16px' }}>
-              {(modalType === 'edit_inventory' || modalType === 'add_inventory') && (
-                <div>
-                  {/* Product Name */}
-                  <div className="win-groupbox" style={{ marginBottom: '8px' }}>
-                    <span className="win-groupbox-label">Product Information</span>
-                    <div style={{ marginBottom: '6px' }}>
-                      <label className="win-label" style={{ display: 'block', marginBottom: '2px' }}>Product Name:</label>
-                      <input className="win-input" style={{ width: '100%' }} value={editingItem?.name || ''} onChange={e => setEditingItem({ ...editingItem, name: e.target.value })} />
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                      <div>
-                        <label className="win-label" style={{ display: 'block', marginBottom: '2px' }}>HSN Code:</label>
-                        <input className="win-input" style={{ width: '100%' }} value={editingItem?.hsn || ''} onChange={e => setEditingItem({ ...editingItem, hsn: e.target.value })} />
-                      </div>
-                      <div>
-                        <label className="win-label" style={{ display: 'block', marginBottom: '2px' }}>Tax Rate (%):</label>
-                        <select className="win-input" style={{ width: '100%' }} value={editingItem?.taxRate || 18} onChange={e => setEditingItem({ ...editingItem, taxRate: parseInt(e.target.value) })}>
-                          <option value="5">5%</option>
-                          <option value="12">12%</option>
-                          <option value="18">18%</option>
-                          <option value="28">28%</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="win-groupbox" style={{ marginBottom: '12px' }}>
-                    <span className="win-groupbox-label">Stock &amp; Pricing</span>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                      <div>
-                        <label className="win-label" style={{ display: 'block', marginBottom: '2px' }}>Stock Level:</label>
-                        <input type="number" className="win-input" style={{ width: '100%' }} value={editingItem?.quantity || 0} onChange={e => setEditingItem({ ...editingItem, quantity: parseInt(e.target.value) || 0 })} />
-                      </div>
-                      <div>
-                        <label className="win-label" style={{ display: 'block', marginBottom: '2px' }}>Base Price (Ex. GST):</label>
-                        <input type="number" className="win-input" style={{ width: '100%' }} value={editingItem?.price || 0} onChange={e => setEditingItem({ ...editingItem, price: parseFloat(e.target.value) || 0 })} />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="win-hr" />
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px', marginTop: '8px' }}>
-                    <button className="win-btn win-btn-primary" onClick={handleSaveItem}>OK</button>
-                    <button className="win-btn" onClick={closeModal}>Cancel</button>
-                  </div>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-lg rounded-3xl p-6 lg:p-10 shadow-2xl overflow-y-auto max-h-[90vh]">
+            {(modalType === 'edit_inventory' || modalType === 'add_inventory') && (
+              <div className="space-y-4">
+                <h2 className="text-xl font-black uppercase text-blue-600 italic">Product Master</h2>
+                <input className="w-full bg-slate-100 p-4 rounded-xl outline-none border-2 focus:border-blue-500 font-bold" placeholder="Product Name" value={editingItem?.name || ''} onChange={e => setEditingItem({...editingItem, name: e.target.value})} />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <input className="w-full bg-slate-100 p-4 rounded-xl outline-none border-2 focus:border-blue-500 font-bold" placeholder="HSN" value={editingItem?.hsn || ''} onChange={e => setEditingItem({...editingItem, hsn: e.target.value})} />
+                    <select className="w-full bg-slate-100 p-4 rounded-xl outline-none border-2 focus:border-blue-500 font-bold" value={editingItem?.taxRate || 18} onChange={e => setEditingItem({...editingItem, taxRate: parseInt(e.target.value)})}>
+                        <option value="5">5% GST</option><option value="12">12% GST</option><option value="18">18% GST</option><option value="28">28% GST</option>
+                    </select>
                 </div>
-              )}
-
-              {modalType === 'confirm_delete' && (
-                <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
-                  <div className="win-msgbox-icon">🗑</div>
-                  <div style={{ flex: 1 }}>
-                    <p style={{ margin: '0 0 8px', fontWeight: 'bold' }}>Delete Product?</p>
-                    <p style={{ margin: '0 0 16px', fontSize: '11px' }}>
-                      Are you sure you want to permanently remove <strong>&ldquo;{itemToDelete?.name}&rdquo;</strong> from the product database?
-                    </p>
-                    <div className="win-hr" />
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px', marginTop: '8px' }}>
-                      <button className="win-btn win-btn-primary" onClick={confirmDelete}>Yes</button>
-                      <button className="win-btn" onClick={closeModal}>No</button>
-                    </div>
-                  </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <input type="number" className="w-full bg-slate-100 p-4 rounded-xl outline-none border-2 focus:border-blue-500 font-bold" placeholder="Stock" value={editingItem?.quantity || 0} onChange={e => setEditingItem({...editingItem, quantity: parseInt(e.target.value) || 0})} />
+                    <input type="number" className="w-full bg-slate-100 p-4 rounded-xl outline-none border-2 focus:border-blue-500 font-bold text-blue-600" placeholder="Price" value={editingItem?.price || 0} onChange={e => setEditingItem({...editingItem, price: parseFloat(e.target.value) || 0})} />
                 </div>
-              )}
-            </div>
+                <button onClick={handleSaveItem} className="w-full bg-blue-600 text-white font-black py-4 rounded-xl shadow-lg mt-2 transition hover:bg-blue-700">Save Product</button>
+              </div>
+            )}
+
+            {modalType === 'confirm_delete' && (
+              <div className="text-center p-4">
+                <h2 className="text-xl font-black mb-2">Confirm Delete</h2>
+                <p className="text-slate-500 mb-6 text-sm">Delete "{itemToDelete?.name}" permanently?</p>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <button onClick={closeModal} className="flex-1 bg-slate-100 py-3 rounded-xl font-bold">Cancel</button>
+                  <button onClick={confirmDelete} className="flex-1 bg-red-600 py-3 rounded-xl font-bold text-white">Delete</button>
+                </div>
+              </div>
+            )}
+            <button onClick={closeModal} className="w-full mt-4 text-slate-400 font-bold text-[10px] uppercase">Dismiss</button>
           </div>
         </div>
       )}
 
-      {/* MAIN APPLICATION WINDOW */}
-      <div className="win-window" style={{ maxWidth: '1100px', margin: '0 auto' }}>
-
-        {/* Title Bar */}
-        <div className="win-titlebar">
-          <span className="win-titlebar-icon">📊</span>
-          <span className="win-titlebar-text">ERP_Lite Pro Systems - Point of Sale Terminal v2.0</span>
-          <button className="win-titlebar-btn" title="Minimize">_</button>
-          <button className="win-titlebar-btn" title="Maximize">□</button>
-          <button className="win-titlebar-btn" title="Close" style={{ marginLeft: '2px', background: '#c0c0c0' }}>✕</button>
-        </div>
-
-        {/* Menu Bar */}
-        <div className="win-menubar">
-          {['File', 'Edit', 'View', 'Inventory', 'Reports', 'Tools', 'Help'].map(m => (
-            <span key={m} className="win-menu-item">{m}</span>
+      {/* --- NAV --- */}
+      <nav className="bg-white border-b sticky top-0 z-50 shadow-sm px-4 lg:px-8 py-3 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <h1 className="text-xl font-black text-blue-600 italic">ERP_Lite <span className="text-[8px] not-italic text-slate-400 border px-1 rounded ml-1">PRO</span></h1>
+        <div className="flex bg-slate-100 p-1 rounded-xl w-full sm:w-auto overflow-x-auto">
+          {['billing', 'inventory', 'history'].map((v) => (
+            <button key={v} onClick={() => {setView(v); setIsDone(false);}} className={`flex-1 sm:flex-none px-4 lg:px-8 py-2 rounded-lg text-[10px] font-black uppercase transition-all whitespace-nowrap ${view === v ? 'bg-white shadow-sm text-blue-600' : 'text-slate-400'}`}>{v}</button>
           ))}
         </div>
-
-        {/* Toolbar */}
-        <div className="win-toolbar">
-          <button className="win-toolbar-btn" title="New Invoice" onClick={() => { setCart([]); setCustomer({ name: '', phone: '' }); setIsDone(false); setDiscount(0); setView('billing'); }}>
-            <span>📄</span> New
+        {showInstallBtn && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[150] animate-in slide-in-from-bottom-10">
+          <button 
+            onClick={handleInstallClick}
+            className="bg-slate-900 text-white px-6 py-3 rounded-full font-black text-[10px] uppercase tracking-widest shadow-2xl flex items-center gap-3 border border-white/20 hover:bg-blue-600 transition-colors"
+          >
+            <span className="bg-blue-500 p-1 rounded-md text-[8px]">⬇️</span>
+            Install ERP App
           </button>
-          <div className="win-separator" />
-          <button className="win-toolbar-btn" title="Generate PDF" onClick={() => history[0] && generatePDF(history[0])}>
-            <span>🖨</span> Print
-          </button>
-          <button className="win-toolbar-btn" title="Export">
-            <span>💾</span> Save
-          </button>
-          <div className="win-separator" />
-          <button className="win-toolbar-btn" title="Refresh">
-            <span>🔄</span> Refresh
-          </button>
-          <div className="win-separator" />
-          <span style={{ fontSize: '11px', color: '#444', marginLeft: '4px' }}>
-            GSTIN: 27AAAAA0000A1Z5 | Kolhapur, Maharashtra
-          </span>
         </div>
+      )}
+      </nav>
 
-        {/* Tab Control */}
-        <div style={{ padding: '6px 6px 0', background: '#d4d0c8', borderBottom: '1px solid #808080' }}>
-          <div style={{ display: 'flex', alignItems: 'flex-end' }}>
-            {[
-              { key: 'billing', label: '🧾 Billing' },
-              { key: 'inventory', label: '📦 Inventory' },
-              { key: 'history', label: '📋 History' },
-            ].map(tab => (
-              <button
-                key={tab.key}
-                className={`win-tab${view === tab.key ? ' active' : ''}`}
-                onClick={() => { setView(tab.key); setIsDone(false); }}
-                style={{ border: '1px solid #808080', borderBottom: view === tab.key ? '1px solid #d4d0c8' : '1px solid #808080', fontFamily: 'Tahoma, Arial, sans-serif', fontSize: '11px', background: view === tab.key ? '#d4d0c8' : '#c0bcb4', cursor: 'pointer', padding: view === tab.key ? '3px 12px 4px' : '2px 12px 3px' }}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Content Area */}
-        <div style={{ padding: '8px', background: '#d4d0c8' }}>
-
-          {/* --- BILLING VIEW --- */}
-          {view === 'billing' && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: '8px', alignItems: 'start' }}>
-
-              {/* Left Panel */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-
-                {/* Customer Details */}
-                <div className="win-groupbox">
-                  <span className="win-groupbox-label">Customer Details</span>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', paddingTop: '4px' }}>
-                    <div>
-                      <label className="win-label" style={{ display: 'block', marginBottom: '2px' }}>Customer Name:</label>
-                      <input className="win-input" style={{ width: '100%' }} value={customer.name} onChange={e => setCustomer({ ...customer, name: e.target.value })} placeholder="Walk-in Customer" />
-                    </div>
-                    <div>
-                      <label className="win-label" style={{ display: 'block', marginBottom: '2px' }}>Mobile Number:</label>
-                      <input className="win-input" style={{ width: '100%' }} value={customer.phone} onChange={e => setCustomer({ ...customer, phone: e.target.value })} placeholder="+91 XXXXX XXXXX" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Product Search */}
-                {!isDone && (
-                  <div className="win-groupbox" style={{ position: 'relative' }}>
-                    <span className="win-groupbox-label">Product Search</span>
-                    <div style={{ display: 'flex', gap: '4px', paddingTop: '4px' }}>
-                      <input
-                        type="text"
-                        placeholder="Type product name or HSN code..."
-                        className="win-input"
-                        style={{ flex: 1 }}
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                      />
-                      <button className="win-btn">Find</button>
-                    </div>
-                    {searchTerm.length >= 2 && (
-                      <div className="win-window" style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50, marginTop: '2px', maxHeight: '180px', overflowY: 'auto' }}>
-                        {inventory.filter(i => i.name.toLowerCase().includes(searchTerm.toLowerCase()) || i.hsn.includes(searchTerm)).map(item => (
-                          <div
-                            key={item.id}
-                            onClick={() => addToCart(item)}
-                            style={{ padding: '4px 8px', cursor: 'default', borderBottom: '1px solid #e8e8e8', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff' }}
-                            onMouseEnter={e => { e.currentTarget.style.background = '#0a246a'; e.currentTarget.style.color = '#fff'; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#000'; }}
-                          >
-                            <div>
-                              <div style={{ fontWeight: 'bold' }}>{item.name}</div>
-                              <div style={{ fontSize: '10px', color: 'inherit' }}>HSN: {item.hsn} | Stock: {item.quantity}</div>
-                            </div>
-                            <div style={{ fontWeight: 'bold', fontFamily: 'Courier New, monospace' }}>Rs.{item.price.toFixed(2)}</div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Cart Table */}
-                <div className="win-groupbox" style={{ opacity: isDone ? 0.5 : 1, pointerEvents: isDone ? 'none' : 'auto' }}>
-                  <span className="win-groupbox-label">Billing Cart</span>
-                  <div style={{ paddingTop: '4px', border: '1px solid #808080', boxShadow: 'inset 1px 1px 0 #404040, inset -1px -1px 0 #fff' }}>
-                    <table className="win-table">
-                      <thead>
-                        <tr>
-                          <th style={{ width: '40%' }}>Description</th>
-                          <th>Rate (Rs.)</th>
-                          <th>Qty</th>
-                          <th style={{ textAlign: 'right' }}>Taxable Amt (Rs.)</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {cart.map(item => (
-                          <tr key={item.id}>
-                            <td>
-                              <div style={{ fontWeight: 'bold' }}>{item.name}</div>
-                              <div style={{ fontSize: '10px', color: '#555' }}>HSN: {item.hsn} | GST: {item.taxRate}%</div>
-                            </td>
-                            <td style={{ fontFamily: 'Courier New, monospace' }}>{item.price.toFixed(2)}</td>
-                            <td>
-                              <input
-                                type="number"
-                                className="win-input"
-                                style={{ width: '50px', textAlign: 'center' }}
-                                value={item.qty}
-                                onChange={(e) => handleQtyChange(item.id, e.target.value)}
-                              />
-                            </td>
-                            <td style={{ textAlign: 'right', fontFamily: 'Courier New, monospace', fontWeight: 'bold' }}>
-                              {(item.price * item.qty).toFixed(2)}
-                            </td>
-                          </tr>
-                        ))}
-                        {cart.length === 0 && (
-                          <tr>
-                            <td colSpan="4" style={{ textAlign: 'center', padding: '24px', color: '#808080', fontStyle: 'italic' }}>
-                              No items in cart. Use product search to add items.
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
+      <div className="max-w-7xl mx-auto mt-6 lg:mt-10 px-4 lg:px-6">
+        
+        {/* --- BILLING VIEW --- */}
+        {view === 'billing' && (
+          <div className="grid lg:grid-cols-12 gap-6 lg:gap-10">
+            <div className="lg:col-span-8 space-y-6">
+              <div className="bg-white p-4 lg:p-6 rounded-2xl lg:rounded-[2rem] border grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <input className="w-full bg-slate-50 p-4 rounded-xl outline-none border focus:border-blue-400 text-sm font-bold" value={customer.name} onChange={e => setCustomer({ ...customer, name: e.target.value })} placeholder="Customer Name" />
+                <input className="w-full bg-slate-50 p-4 rounded-xl outline-none border focus:border-blue-400 text-sm font-bold" value={customer.phone} onChange={e => setCustomer({ ...customer, phone: e.target.value })} placeholder="Mobile Number" />
               </div>
 
-              {/* Right Panel: Settlement */}
-              <div>
-                <div className="win-groupbox">
-                  <span className="win-groupbox-label">Invoice Summary</span>
-                  <div style={{ paddingTop: '8px' }}>
-
-                    {/* Summary Table */}
-                    <div className="win-sunken" style={{ background: '#fff', padding: '4px 8px', marginBottom: '8px' }}>
-                      <table style={{ width: '100%', fontSize: '11px', fontFamily: 'Tahoma, Arial, sans-serif', borderCollapse: 'collapse' }}>
-                        <tbody>
-                          <tr>
-                            <td style={{ padding: '2px 0', color: '#444' }}>Subtotal:</td>
-                            <td style={{ textAlign: 'right', fontFamily: 'Courier New, monospace' }}>Rs.{billingSummary.subtotal.toFixed(2)}</td>
-                          </tr>
-                          <tr>
-                            <td style={{ padding: '2px 0', color: '#008000' }}>Discount (%):</td>
-                            <td style={{ textAlign: 'right' }}>
-                              <input
-                                type="number"
-                                className="win-input"
-                                style={{ width: '50px', textAlign: 'right' }}
-                                value={discount}
-                                onChange={e => setDiscount(Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)))}
-                              />
-                            </td>
-                          </tr>
-                          <tr>
-                            <td style={{ padding: '2px 0', color: '#008000' }}>Discount Amt:</td>
-                            <td style={{ textAlign: 'right', fontFamily: 'Courier New, monospace', color: '#008000' }}>-Rs.{billingSummary.discountAmount.toFixed(2)}</td>
-                          </tr>
-                          <tr>
-                            <td style={{ padding: '2px 0' }}>CGST (9%):</td>
-                            <td style={{ textAlign: 'right', fontFamily: 'Courier New, monospace' }}>Rs.{billingSummary.cgst.toFixed(2)}</td>
-                          </tr>
-                          <tr>
-                            <td style={{ padding: '2px 0' }}>SGST (9%):</td>
-                            <td style={{ textAlign: 'right', fontFamily: 'Courier New, monospace' }}>Rs.{billingSummary.sgst.toFixed(2)}</td>
-                          </tr>
-                        </tbody>
-                      </table>
+              {!isDone && (
+                <div className="relative">
+                  <input type="text" placeholder="Search products..." className="w-full p-4 lg:p-6 rounded-2xl border-2 outline-none focus:border-blue-600 shadow-sm text-lg" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                  {searchTerm.length >= 2 && (
+                    <div className="absolute top-full left-0 right-0 bg-white border rounded-2xl shadow-2xl mt-2 z-50 overflow-hidden">
+                      {inventory
+                        .filter((i) =>
+                          i.name.toLowerCase().includes(searchTerm.toLowerCase())
+                        )
+                        .map((item) => (
+                          <button
+                            key={item.id}
+                            onClick={() => addToCart(item)}
+                            className="w-full p-4 text-left hover:bg-blue-50 flex justify-between border-b items-center"
+                          >
+                            <span className="font-bold text-sm">{item.name}</span>
+                            <span className="text-blue-600 font-black">
+                              ₹{item.price.toFixed(0)}
+                            </span>
+                          </button>
+                        ))}
                     </div>
+                  )}
 
-                    {/* Grand Total */}
-                    <div className="win-raised" style={{ background: '#000080', color: '#fff', padding: '8px', textAlign: 'center', marginBottom: '10px' }}>
-                      <div style={{ fontSize: '10px', marginBottom: '2px', fontFamily: 'Tahoma, Arial, sans-serif', color: '#a0c0ff' }}>NET PAYABLE AMOUNT</div>
-                      <div style={{ fontSize: '22px', fontWeight: 'bold', fontFamily: 'Courier New, monospace', letterSpacing: '1px' }}>
-                        Rs.{billingSummary.finalTotal.toFixed(2)}
-                      </div>
-                    </div>
+                  <button
+                    className="win-btn"
+                    style={{ width: "100%", height: "28px" }}
+                    onClick={() => {
+                      setCart([]);
+                      setCustomer({ name: "", phone: "" });
+                      setIsDone(false);
+                      setDiscount(0);
+                    }}
+                  >
+                    New Session
+                  </button>
+                </div>)}
+            </div>
 
-                    {/* Action Buttons */}
-                    {!isDone ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <button
-                          className="win-btn win-btn-primary"
-                          style={{ width: '100%', height: '28px', fontSize: '11px', fontWeight: 'bold' }}
-                          onClick={finalizeBill}
-                          disabled={cart.length === 0}
-                        >
-                          Generate Invoice
-                        </button>
-                      </div>
-                    ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <button
-                          className="win-btn"
-                          style={{ width: '100%', height: '28px', background: '#d4ffd4', fontWeight: 'bold' }}
-                          onClick={() => generatePDF(history[0])}
-                        >
-                          📄 Download Tax Invoice
-                        </button>
-                        <button
-                          className="win-btn"
-                          style={{ width: '100%', height: '28px' }}
-                          onClick={() => { setCart([]); setCustomer({ name: '', phone: '' }); setIsDone(false); setDiscount(0); }}
-                        >
-                          New Session
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* System info panel */}
-                <div className="win-groupbox" style={{ marginTop: '8px' }}>
-                  <span className="win-groupbox-label">System Info</span>
-                  <div style={{ paddingTop: '6px', fontSize: '10px', color: '#444', lineHeight: '1.6' }}>
-                    <div>Version: ERP_Lite 2.0</div>
-                    <div>User: Administrator</div>
-                    <div>Terminal: POS-01</div>
-                    <div style={{ color: cart.length > 0 ? '#008000' : '#808080' }}>
-                      Cart: {cart.length} item(s)
-                    </div>
-                  </div>
+            {/* System info panel */}
+            <div className="win-groupbox" style={{ marginTop: '8px' }}>
+              <span className="win-groupbox-label">System Info</span>
+              <div style={{ paddingTop: '6px', fontSize: '10px', color: '#444', lineHeight: '1.6' }}>
+                <div>Version: ERP_Lite 2.0</div>
+                <div>User: Administrator</div>
+                <div>Terminal: POS-01</div>
+                <div style={{ color: cart.length > 0 ? '#008000' : '#808080' }}>
+                  Cart: {cart.length} item(s)
                 </div>
               </div>
             </div>
-          )}
+          </div>)}
+            </div>
 
           {/* --- INVENTORY VIEW --- */}
           {view === 'inventory' && (
@@ -504,130 +303,252 @@ export default function Home() {
                 <span style={{ fontSize: '11px', color: '#555' }}>Master Database — {inventory.length} record(s)</span>
               </div>
 
-              {/* Inventory Table */}
-              <div className="win-sunken" style={{ overflow: 'hidden' }}>
-                <table className="win-table">
-                  <thead>
-                    <tr>
-                      <th>Product Details</th>
-                      <th>Tax Specs</th>
-                      <th>Quantity</th>
-                      <th>Unit Price (Rs.)</th>
-                      <th style={{ textAlign: 'right' }}>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {inventory.map(item => (
-                      <tr key={item.id}>
-                        <td>
-                          <div style={{ fontWeight: 'bold' }}>{item.name}</div>
-                          <div style={{ fontSize: '10px', color: '#555' }}>SKU: V9-PRO-{item.id.toString().slice(-4)}</div>
-                        </td>
-                        <td>
-                          <span style={{ fontFamily: 'Courier New, monospace', fontSize: '10px', background: '#e8e8e8', padding: '1px 4px', border: '1px solid #808080' }}>
-                            HSN:{item.hsn} ({item.taxRate}%)
-                          </span>
-                        </td>
-                        <td>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: item.quantity < 10 ? '#ff0000' : '#008000', display: 'inline-block', border: '1px solid #404040' }}></span>
-                            <span style={{ fontFamily: 'Courier New, monospace', color: item.quantity < 10 ? '#cc0000' : '#000', fontWeight: item.quantity < 10 ? 'bold' : 'normal' }}>
-                              {item.quantity} Units
-                            </span>
-                          </div>
-                        </td>
-                        <td style={{ fontFamily: 'Courier New, monospace', fontWeight: 'bold', color: '#000080' }}>
-                          {item.price.toFixed(2)}
-                        </td>
-                        <td style={{ textAlign: 'right' }}>
-                          <button
-                            className="win-btn"
-                            style={{ marginRight: '4px', fontSize: '10px', minWidth: '50px', height: '20px', padding: '1px 6px' }}
-                            onClick={() => { setModalType('edit_inventory'); setEditingItem(item); }}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            className="win-btn"
-                            style={{ fontSize: '10px', minWidth: '50px', height: '20px', padding: '1px 6px', color: '#cc0000' }}
-                            onClick={() => { setModalType('confirm_delete'); setItemToDelete(item); }}
-                          >
-                            Delete
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className={`bg-white rounded-2xl border overflow-hidden ${isDone ? 'opacity-50' : ''}`}>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm">
+                    <thead className="bg-slate-50 border-b">
+                        <tr className="text-[10px] font-black uppercase text-slate-400">
+                        <th className="p-4">Item</th>
+                        <th className="p-4">Qty</th>
+                        <th className="p-4 text-right">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {cart.map(item => (
+                        <tr key={item.id} className="border-b last:border-0">
+                            <td className="p-4">
+                                <p className="font-bold leading-tight">{item.name}</p>
+                                <p className="text-[9px] text-slate-400">₹{item.price.toFixed(2)} + {item.taxRate}%</p>
+                            </td>
+                            <td className="p-4">
+                                <input type="number" className="w-12 border rounded p-1 text-center font-bold" value={item.qty} onChange={(e) => handleQtyChange(item.id, e.target.value)} />
+                            </td>
+                            <td className="p-4 text-right font-black">₹{(item.price * item.qty).toFixed(0)}</td>
+                        </tr>
+                        ))}
+                    </tbody>
+                    </table>
+                </div>
+                {cart.length === 0 && <p className="p-10 text-center text-slate-300 italic">Cart is empty</p>}
               </div>
             </div>
           )}
 
           {/* --- HISTORY VIEW --- */}
-          {view === 'history' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '4px', color: '#000080' }}>
-                Transaction Archives — {history.length} record(s)
-              </div>
+      {view === 'history' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '4px', color: '#000080' }}>
+            Transaction Archives — {history.length} record(s)
+          </div>
 
-              {history.length === 0 && (
-                <div className="win-sunken" style={{ background: '#fff', padding: '32px', textAlign: 'center', color: '#808080', fontStyle: 'italic' }}>
-                  No historical records found. Generate a bill to see transaction history.
+          {/* SIDEBAR / FOOTER SUMMARY */}
+          <div className="lg:col-span-4 lg:sticky lg:top-28">
+            <div className="bg-slate-900 text-white p-6 lg:p-8 rounded-3xl lg:rounded-[2.5rem] shadow-xl">
+              <div className="space-y-3 mb-6 text-[10px] uppercase font-bold tracking-widest">
+                <div className="flex justify-between text-slate-400"><span>Subtotal</span><span>₹{billingSummary.subtotal.toFixed(2)}</span></div>
+                <div className="flex justify-between text-emerald-400 items-center">
+                  <span>Discount %</span>
+                  <input type="number" className="bg-slate-800 rounded px-2 py-1 w-12 text-right outline-none" value={discount} onChange={e => setDiscount(Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)))} />
                 </div>
-              )}
+                <div className="flex justify-between text-slate-400"><span>GST (CGST+SGST)</span><span>₹{(billingSummary.cgst + billingSummary.sgst).toFixed(2)}</span></div>
+                <div className="h-px bg-white/10 my-2"></div>
+                <h2 className="text-4xl lg:text-5xl font-black text-center py-2">₹{billingSummary.finalTotal.toFixed(0)}</h2>
+              </div>
+                
+              {!isDone ? (
+                <button
+                  onClick={finalizeBill}
+                  disabled={cart.length === 0}
+                  className="w-full bg-blue-600 py-4 rounded-xl font-black uppercase tracking-widest hover:bg-blue-500 disabled:opacity-50"
+                >
+                  Confirm Bill
+                </button>
+              ) : (
+                <>
+                  <div className="space-y-3">
+                    <button
+                      onClick={() => generatePDF(history[0])}
+                      className="w-full bg-emerald-500 py-4 rounded-xl font-black uppercase"
+                    >
+                      Download PDF
+                    </button>
 
-              {history.map((bill) => (
-                <div key={bill.billId} className="win-raised" style={{ background: '#fff', padding: '0', overflow: 'hidden' }}>
-                  {/* Mini title bar for each record */}
-                  <div style={{ background: '#d4d0c8', borderBottom: '1px solid #808080', padding: '2px 6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontWeight: 'bold', fontSize: '10px', color: '#000080' }}>Invoice #{bill.billId}</span>
-                    <span style={{ fontSize: '10px', color: '#555' }}>{bill.date}</span>
+                    <button
+                      onClick={() => {
+                        setCart([]);
+                        setCustomer({ name: "", phone: "" });
+                        setIsDone(false);
+                        setDiscount(0);
+                      }}
+                      className="w-full text-slate-400 font-bold uppercase text-[10px] text-center"
+                    >
+                      New Bill
+                    </button>
                   </div>
-                  <div style={{ padding: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
+
+                  <div
+                    style={{
+                      padding: "8px",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: "16px",
+                    }}
+                  >
                     <div>
-                      <div style={{ fontWeight: 'bold' }}>{bill.customer.name || 'Walk-in Customer'}</div>
-                      <div style={{ fontSize: '10px', color: '#555' }}>
-                        {bill.customer.phone || 'No phone'} — {bill.items.length} item(s)
+                      <div style={{ fontWeight: "bold" }}>
+                        {bill.customer.name || "Walk-in Customer"}
+                      </div>
+
+                      <div
+                        style={{
+                          fontSize: "10px",
+                          color: "#555",
+                        }}
+                      >
+                        {bill.customer.phone || "No phone"} — {bill.items.length} item(s)
                       </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: '10px', color: '#808080' }}>GRAND TOTAL</div>
-                        <div style={{ fontFamily: 'Courier New, monospace', fontWeight: 'bold', fontSize: '16px', color: '#000080' }}>
+
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "12px",
+                      }}
+                    >
+                      <div style={{ textAlign: "right" }}>
+                        <div
+                          style={{
+                            fontSize: "10px",
+                            color: "#808080",
+                          }}
+                        >
+                          GRAND TOTAL
+                        </div>
+
+                        <div
+                          style={{
+                            fontFamily: "Courier New, monospace",
+                            fontWeight: "bold",
+                            fontSize: "16px",
+                            color: "#000080",
+                          }}
+                        >
                           Rs.{bill.finalTotal.toFixed(2)}
                         </div>
                       </div>
+
                       <button
                         className="win-btn"
-                        style={{ fontSize: '10px', height: '22px', padding: '1px 8px' }}
+                        style={{
+                          fontSize: "10px",
+                          height: "22px",
+                          padding: "1px 8px",
+                        }}
                         onClick={() => generatePDF(bill)}
                       >
                         📄 Export PDF
                       </button>
                     </div>
                   </div>
-                </div>
-              ))}
+                </>
+              )}
             </div>
-          )}
-        </div>
+          </div>
 
-        {/* Status Bar */}
-        <div className="win-statusbar">
-          <div className="win-statusbar-pane" style={{ flex: 1 }}>
-            Ready
+          {/* Status Bar */}
+          <div className="win-statusbar">
+            <div className="win-statusbar-pane" style={{ flex: 1 }}>
+              Ready
+            </div>
+
+            {/* --- INVENTORY VIEW --- */}
+            {view === 'inventory' && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="bg-white p-6 rounded-2xl border shadow-sm">
+                    <p className="text-slate-400 text-[10px] font-black uppercase mb-1">Products</p>
+                    <p className="text-3xl font-black">{inventory.length}</p>
+                  </div>
+                  <div className="bg-white p-6 rounded-2xl border shadow-sm border-red-100">
+                    <p className="text-red-400 text-[10px] font-black uppercase mb-1">Low Stock</p>
+                    <p className="text-3xl font-black text-red-600">{inventory.filter(i => i.quantity < 10).length}</p>
+                  </div>
+                  <div className="bg-white p-6 rounded-2xl border shadow-sm">
+                    <p className="text-emerald-400 text-[10px] font-black uppercase mb-1">Stock Value</p>
+                    <p className="text-2xl font-black">₹{inventory.reduce((s, i) => s + (i.price * i.quantity), 0).toLocaleString('en-IN')}</p>
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-2xl border">
+                  <h2 className="text-xl font-black uppercase">Stock Manager</h2>
+                  <button onClick={() => { setModalType('add_inventory'); setEditingItem({ name: '', quantity: 0, price: 0, hsn: '', taxRate: 18 }) }} className="w-full sm:w-auto bg-blue-600 text-white px-6 py-3 rounded-xl font-black text-sm">ADD PRODUCT</button>
+                </div>
+
+                <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm">
+                      <thead className="bg-slate-50 border-b">
+                        <tr className="text-[10px] font-black text-slate-400 uppercase">
+                          <th className="p-4">Item Details</th>
+                          <th className="p-4">Stock</th>
+                          <th className="p-4">Price</th>
+                          <th className="p-4 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {inventory.map(item => (
+                          <tr key={item.id} className="border-b last:border-0 hover:bg-slate-50">
+                            <td className="p-4">
+                              <p className="font-bold">{item.name}</p>
+                              <p className="text-[9px] text-slate-400">HSN: {item.hsn} | {item.taxRate}%</p>
+                            </td>
+                            <td className="p-4">
+                              <span className={`font-bold ${item.quantity < 10 ? 'text-red-500' : ''}`}>{item.quantity}</span>
+                            </td>
+                            <td className="p-4 font-bold text-blue-600">₹{item.price.toFixed(0)}</td>
+                            <td className="p-4 text-right space-x-2">
+                              <button onClick={() => { setModalType('edit_inventory'); setEditingItem(item) }} className="text-blue-600 font-bold text-[10px] uppercase">Edit</button>
+                              <button onClick={() => { setModalType('confirm_delete'); setItemToDelete(item) }} className="text-red-600 font-bold text-[10px] uppercase">Del</button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* --- HISTORY VIEW --- */}
+            {view === 'history' && (
+              <div className="space-y-4">
+                <h2 className="text-xl font-black uppercase text-slate-400 mb-6">Recent Sales</h2>
+                {history.map((bill) => (
+                  <div key={bill.billId} className="bg-white p-5 rounded-2xl border shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                      <p className="text-[8px] font-black text-slate-300 uppercase mb-1"># {bill.billId}</p>
+                      <p className="font-bold text-sm">{bill.date}</p>
+                      <p className="text-[10px] text-blue-500 font-bold uppercase">{bill.customer.name || 'Walk-in'}</p>
+                    </div>
+                    <div className="flex items-center justify-between w-full sm:w-auto gap-6">
+                      <div className="text-right">
+                        <p className="text-[8px] font-bold text-slate-300 uppercase">Total</p>
+                        <p className="text-xl font-black text-blue-600">₹{bill.finalTotal.toFixed(0)}</p>
+                      </div>
+                      <button onClick={() => generatePDF(bill)} className="bg-slate-900 text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase">PDF</button>
+                    </div>
+                  </div>
+                ))}
+                {history.length === 0 && <div className="p-20 text-center text-slate-300 italic border-2 border-dashed rounded-2xl">No sales found.</div>}
+              </div>
+            )}
+
+
           </div>
-          <div className="win-statusbar-pane" style={{ minWidth: '120px' }}>
-            Items in cart: {cart.length}
-          </div>
-          <div className="win-statusbar-pane" style={{ minWidth: '120px' }}>
-            Products: {inventory.length}
-          </div>
-          <div className="win-statusbar-pane" style={{ minWidth: '140px' }}>
-            {new Date().toLocaleDateString('en-IN')}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+
+      
+        </div>)}        </div>
+
+      )}
